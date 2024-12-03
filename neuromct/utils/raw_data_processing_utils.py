@@ -26,12 +26,7 @@ def construct_params_grid(kB, fC, LY, grid_size):
     params_grid = np.concatenate([kB_list, fC_list, LY_list], axis=1, dtype=np.float64)
     return params_grid
 
-def add_sources_labels_to_params_grid(params_grid, n_sources):
-    n_params_conbinations = params_grid.shape[0]
-    number_of_spectra = n_sources * n_params_conbinations
-    one_hot_basis = np.eye(n_sources, dtype=np.float64)
-    sources_labels_ohe = np.repeat(one_hot_basis, n_params_conbinations, axis=0).astype(int)
-
-    params_grid_tiled = np.tile(params_grid, (n_sources, 1))
-    model_input = np.hstack((params_grid_tiled, sources_labels_ohe), dtype=np.float64)
-    return model_input
+def construct_source_types_vector(n_datasets, n_sources):
+    vector_basis = np.arange(n_sources, dtype=np.int64)
+    source_types_vector = np.repeat(vector_basis, n_datasets).reshape(-1, 1)
+    return source_types_vector
