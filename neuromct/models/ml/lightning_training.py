@@ -10,6 +10,7 @@ class LightningTrainingTransformer(LightningModule):
              optimizer: optim.Optimizer,
              lr_scheduler: optim.lr_scheduler.LRScheduler,
              lr: float,
+             output_dim: int,
              **kwargs,
         ):
         super(LightningTrainingTransformer, self).__init__()
@@ -17,6 +18,7 @@ class LightningTrainingTransformer(LightningModule):
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.lr = lr    
+        self.output_dim = output_dim
         self.kwargs = kwargs
         
         self.train_loss_to_plot = []
@@ -53,22 +55,14 @@ class LightningTrainingTransformer(LightningModule):
         return loss
         
     def on_validation_epoch_end(self):
-        if self.current_epoch % 1 == 0:
-            save = True
-        else:
-            save = False
-
         self.val_epoch_loss = (self.val1_epoch_loss + 4 * self.val2_epoch_loss) / 5
+        self.val1_loss_to_plot.append(self.val1_epoch_loss)
+        self.val2_loss_to_plot.append(self.val2_epoch_loss)
+        self.val_loss_to_plot.append(self.val_epoch_loss)
         self.log('val_loss', self.val_epoch_loss, prog_bar=True)
         
-        clear_output(wait=True)
-        self.plot_val1_spectra(save);
-        self.plot_val2_spectra(save);
-        self.plot_val_metrics(save)
-        self.plot_train_loss(save)
-
     def configure_optimizers(self):      
         opt = self.optimizer(self.parameters(), lr=self.lr, maximize=False)
-        scheduler = lr_scheduler(opt, mode='min', factor=0.95, patience=5, verbose=False) # depends on lr_scheduler. Needs flexibility
+        scheduler = lr_scheduler(opt, mode='min', factor=0.95, patience=5, verbose=False) # depends on lr_scheduler. Needs more flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_loss"}]
 
