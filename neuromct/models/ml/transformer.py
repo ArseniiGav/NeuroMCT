@@ -19,8 +19,12 @@ class TransformerRegressor(nn.Module):
         self.source_type_emb_layer = nn.Embedding(n_sources, d_model // 2)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
-        self.output_linear = nn.Linear(d_model, output_dim)
-        self.output_activation = nn.Softplus()
+        self.regression_head = nn.Sequential(
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Linear(d_model, output_dim),
+            nn.Softplus()
+        )
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -34,6 +38,5 @@ class TransformerRegressor(nn.Module):
         source_type_emb = self.source_type_emb_layer(x[:, self.param_dim])
         x = torch.cat([param_emb, source_type_emb], dim=1)
         x = self.transformer_encoder(x)
-        x = self.output_linear(x)
-        x = self.output_activation(x)
+        x = self.regression_head(x)
         return x
