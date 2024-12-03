@@ -1,60 +1,25 @@
+import torch.optim as optim
 from lightning import LightningModule
 from neuromct.models.ml import TransformerRegressor
 
+
 class LightningTrainingTransformer(LightningModule):
     def __init__(self,
-             output_dim,
-             param_dim,
-             n_sources,
-             lr,
-             b1,
-             b2,
-             d_model,
-             nhead,
-             num_encoder_layers,
-             dim_feedforward,
-             dropout
+             optimizer: optim.Optimizer,
+             lr: float,
+             transformer: nn.Module,
+             **kwargs,
         ):
         super(LightningTrainingTransformer, self).__init__()
 
         self.lr = lr
         self.b1 = b1
         self.b2 = b2
-        
-        self.output_dim = output_dim
-        self.param_dim = param_dim
-        self.n_sources = n_sources
-        self.d_model = d_model
-        self.nhead = nhead
-        self.num_encoder_layers = num_encoder_layers
-        self.dim_feedforward = dim_feedforward
-        self.dropout = dropout
-        
-        self.transformer = TransformerRegressor(
-             output_dim=self.output_dim,
-             param_dim=self.param_dim,
-             n_sources=self.n_sources,
-             d_model=self.d_model,
-             nhead=self.nhead,
-             num_encoder_layers=self.num_encoder_layers,
-             dim_feedforward=self.dim_feedforward,
-             dropout=self.dropout,
-        )
-
-        self.loss_function = CosineDistanceLoss() #nn.MSELoss() #GeneralizedPoissonNLLLoss(log=True)
-        self.val_loss_function = CosineDistanceLoss() #nn.PoissonNLLLoss(log_input=False)
+    
         self.train_loss_to_plot = []
         self.val1_loss_to_plot = []
         self.val2_loss_to_plot = []
         self.val_loss_to_plot = []
-        self.data_path = data_path
-        self.apply(self._init_weights)
-
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            nn.init.orthogonal_(module.weight)
-            if module.bias is not None:
-                module.bias.data.fill_(0.0)
     
     def load_scaler(self, filepath="models/minmax_scaler.pkl"):
         return pickle.load(open(filepath, "rb"))
