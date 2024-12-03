@@ -2,7 +2,7 @@ import torch
 import argparse
 import numpy as np
 from neuromct.dataset import load_minimax_scaler, load_raw_data
-from neuromct.utils import construct_model_input, add_sources_labels_to_params_grid
+from neuromct.utils import construct_model_input, construct_labels_vector
 from neuromct.configs import configs
 
 
@@ -38,11 +38,13 @@ if dataset_type == 'val2':
         NPEs_counts_tensor =  torch.tensor(NPEs_counts_arrays, dtype=torch.float64)
         
         params_grid = np.repeat(params_values_scaled[j].reshape(1, -1), n_datasets, axis=0)
-        model_input = add_sources_labels_to_params_grid(params_grid, n_sources)
-        model_input_tensor = torch.tensor(model_input, dtype=torch.float64)
+        params_grid_tensor = torch.tensor(params_grid, dtype=torch.float64)
+        source_types = construct_source_types_vector(n_datasets, n_sources)
+        source_types_tensor = torch.tensor(source_types, dtype=torch.int64)
 
-        data = torch.cat([NPEs_counts_tensor, model_input_tensor], dim=1)
-        torch.save(data, f"{path_to_processed_data}/{dataset_type}_{j+1}_data.pt")
+        torch.save(NPEs_counts_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_spectra.pt")
+        torch.save(params_grid_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_params.pt")
+        torch.save(source_types_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_source_types.pt")
 elif dataset_type == "training" or dataset_type == "val1":
     if dataset_type == "training":
         dataset_dir_name = ""
