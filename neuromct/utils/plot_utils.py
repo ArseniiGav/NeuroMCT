@@ -5,6 +5,19 @@ class ModelResultsVisualizator:
     def __init__(self):
         pass
 
+    def load_scaler(self, filepath="models/minmax_scaler.pkl"):
+        return pickle.load(open(filepath, "rb"))
+
+    def load_val1_data_to_vis(self, filepath):
+        val1_data = torch.Tensor(np.load(filepath)['arr_0'])
+        return val1_data
+        
+    def load_val2_data_to_vis(self, filepath):
+        val2_data = torch.Tensor(np.load(filepath)['arr_0'])
+        val2_data[:, :self.output_dim] = val2_data[:, :self.output_dim] / val2_data[:, :self.output_dim].sum(1)[:, None]
+        val2_data_lambdas = val2_data.reshape(self.n_classes, 1000, self.output_dim+self.num_conditions).mean(1)
+        return val2_data_lambdas
+    
     def plot_val1_spectra(self, save=False):
         scaler = self.load_scaler()
 
