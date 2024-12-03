@@ -1,0 +1,72 @@
+import torch
+import argparse
+import numpy as np
+from neuromct.dataset import load_minimax_scaler, load_raw_data
+from neuromct.utils import construct_model_input, add_sources_labels_to_params_grid
+from neuromct.configs import configs
+
+
+parser = argparse.ArgumentParser(description='Process the raw data and build model inputs')
+parser.add_argument("--dataset_type", type=str, default="", help='Dataset type: training/val1/val2')
+args = parser.parse_args()
+dataset_type = args.dataset_type
+
+path_to_processed_data = configs['path_to_processed_data']
+path_to_raw_data = configs['path_to_raw_data']
+path_to_models = configs['path_to_models']
+scaler = load_minimax_scaler(path_to_models)
+
+n_sources = configs['n_sources']
+sources = configs['sources']
+
+if dataset_type == 'val2':
+    dataset_dir_name = "validation_data2"
+    n_datasets = configs['val2_n_datasets']
+    kB_values = np.array(configs['kB_val2_values'], dtype=np.float64).reshape(-1, 1)
+    fC_values = np.array(configs['fC_val2_values'], dtype=np.float64).reshape(-1, 1)
+    LY_values = np.array(configs['LY_val2_values'], dtype=np.float64).reshape(-1, 1)
+    params_values = np.concatenate((kB_values, fC_values, LY_values), axis=1, dtype=np.float64)
+    params_values_scaled = scaler.transform(params_values)
+    kNPE_bins_edges = configs['kNPE_bins_edges']
+    
+    for j in range(len(kB_values)):      
+        NPEs_counts_arrays = []
+        for source in sources:    
+            NPEs_counts_array = load_raw_data(path_to_raw_data, source, dataset_dir_name+f"_{j+1}", n_datasets, kNPE_bins_edges)
+            NPEs_counts_arrays.append(NPEs_counts_array)
+        NPEs_counts_arrays =  np.vstack(NPEs_counts_arrays, dtype=np.float64)
+        NPEs_counts_tensor =  torch.tensor(NPEs_counts_arrays, dtype=torch.float64)
+        
+        params_grid = np.repeat(params_values_scaled[j].reshape(1, -1), n_datasets, axis=0)
+        model_input = add_sources_labels_to_params_grid(params_grid, n_sources)
+        model_input_tensor = torch.tensor(model_input, dtype=torch.float64)
+
+        data = torch.cat([NPEs_counts_tensor, model_input_tensor], dim=1)
+        torch.save(data, f"{path_to_processed_data}/{dataset_type}_{j+1}_data.pt")
+elif dataset_type == "training" or dataset_type == "val1":
+    if dataset_type == "training":
+        dataset_dir_name = ""
+    elif dataset_type == "val1":
+        dataset_dir_name = "validation_data"
+
+    grid_size = configs[f'{dataset_type}_grid_size']
+    kB = np.arange(*configs[f'kB_{dataset_type}_grid_lims'], dtype=np.float64)
+    fC = np.arange(*configs[f'fC_{dataset_type}_grid_lims'], dtype=np.float64)
+    LY = np.arange(*configs[f'LY_{dataset_type}_grid_lims'], dtype=np.float64)
+    kNPE_bins_edges = configs['kNPE_bins_edges']
+    
+    model_input = construct_model_input(kB, fC, LY, grid_size, n_sources, scaler)
+    model_input_tensor = torch.tensor(model_input, dtype=torch.float64)
+
+    n_points = grid_size**3
+    NPEs_counts_arrays = []
+    for source in sources:    
+        NPEs_counts_array = load_raw_data(path_to_raw_data, source, dataset_dir_name, n_points, kNPE_bins_edges)
+        NPEs_counts_arrays.append(NPEs_counts_array)
+    NPEs_counts_arrays = np.vstack(NPEs_counts_arrays, dtype=np.float64)
+    NPEs_counts_tensor = torch.tensor(NPEs_counts_arrays, dtype=torch.float64)
+    
+    data = torch.cat([NPEs_counts_tensor, model_input_tensor], dim=1)
+    torch.save(data, f"{path_to_processed_data}/{dataset_type}_data.pt")
+else:
+    raise Exception('Choose between training, val1 and val2!')
