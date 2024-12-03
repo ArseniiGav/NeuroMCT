@@ -6,15 +6,16 @@ from neuromct.models.ml import TransformerRegressor
 
 class LightningTrainingTransformer(LightningModule):
     def __init__(self,
+             transformer: nn.Module,
              optimizer: optim.Optimizer,
              lr_scheduler: optim.lr_scheduler.LRScheduler,
-             transformer: nn.Module,
              lr: float,
              **kwargs,
         ):
         super(LightningTrainingTransformer, self).__init__()
-        self.optimizer = optimizer
         self.transformer = transformer
+        self.optimizer = optimizer
+        self.lr_scheduler = lr_scheduler
         self.lr = lr    
         self.kwargs = kwargs
         
@@ -22,7 +23,6 @@ class LightningTrainingTransformer(LightningModule):
         self.val1_loss_to_plot = []
         self.val2_loss_to_plot = []
         self.val_loss_to_plot = []
-    
     
     def _compute_and_log_losses(self, y_pred, y, data_type):
         loss = self.loss_function(y_pred, y)
@@ -69,6 +69,6 @@ class LightningTrainingTransformer(LightningModule):
 
     def configure_optimizers(self):      
         opt = self.optimizer(self.parameters(), lr=self.lr, maximize=False)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(opt, mode='min', factor=0.95, patience=5, verbose=False)
+        scheduler = lr_scheduler(opt, mode='min', factor=0.95, patience=5, verbose=False) # depends on lr_scheduler. Needs flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_loss"}]
 
