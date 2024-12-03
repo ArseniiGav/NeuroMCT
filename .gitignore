@@ -125,5 +125,5 @@ dmypy.json
 .pyre/
 
 # my files
-netebooks
+netebooks/
 notebooks/lightning_logs/
