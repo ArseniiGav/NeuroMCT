@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-import orsa
+import orsa_fitter as orsa 
 import pickle
 import numpy as np
 import torch

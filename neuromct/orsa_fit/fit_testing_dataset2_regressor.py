@@ -4,7 +4,7 @@ import numpy as np
 import uproot 
 import pickle
 from copy import deepcopy
-import orsa 
+import orsa_fitter as orsa 
 from orsa_model import Conditions, ModelMCT
 import argparse
 import json
