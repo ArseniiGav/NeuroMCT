@@ -1,12 +1,6 @@
 import numpy as np
 
 
-def construct_model_input(kB, fC, LY, grid_size, n_sources, scaler):
-    params_grid = construct_params_grid(kB, fC, LY, grid_size)
-    params_grid_scaled = scaler.transform(params_grid)
-    model_input = add_sources_labels_to_params_grid(params_grid_scaled, n_sources)
-    return model_input
-
 def construct_params_grid(kB, fC, LY, grid_size):
     kB_list = []
     fC_list = []
