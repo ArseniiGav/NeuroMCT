@@ -7,7 +7,7 @@ class SinusoidalPositionalEncoding(nn.Module):
                  emb_size: int,
                  dropout: float,
                  max_len: int):
-        super(PositionalEncoding, self).__init__()
+        super(SinusoidalPositionalEncoding, self).__init__()
         self.emb_size = emb_size
 
         den = torch.exp(- torch.arange(0, emb_size, 2) * torch.log(10000) / emb_size)
