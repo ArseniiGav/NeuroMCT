@@ -1,5 +1,4 @@
 def matplotlib_setup(tick_labelsize=16, axes_labelsize=18, legend_fontsize=14):
-    import matplotlib.pyplot as plt
     import seaborn as sns 
     import matplotlib as mpl
     
