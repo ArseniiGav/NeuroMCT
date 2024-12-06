@@ -3,20 +3,20 @@ import torch.optim as optim
 from lightning import LightningModule
 
 
-class LightningTraining(LightningModule):
+class TEDELightningTraining(LightningModule):
     def __init__(self,
              model: nn.Module,
              loss_function: nn.Module,
-             metric_function: nn.Module,
+             val_metric_function: nn.Module,
              optimizer: optim.Optimizer,
              lr_scheduler: optim.lr_scheduler.LRScheduler,
              lr: float,
              **kwargs,
         ):
-        super(LightningTraining, self).__init__()
+        super(TEDELightningTraining, self).__init__()
         self.model = model
         self.loss_function = loss_function
-        self.metric_function = metric_function
+        self.val_metric_function = val_metric_function
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.lr = lr    
@@ -33,7 +33,7 @@ class LightningTraining(LightningModule):
         return loss
 
     def _compute_and_log_val_losses(self, spectra_predict, spectra, data_type):
-        loss = self.metric_function(spectra_predict, spectra)
+        loss = self.val_metric_function(spectra_predict, spectra)
         self.log(f"{data_type}_loss", loss, prog_bar=True, on_epoch=True)
         return loss
 
