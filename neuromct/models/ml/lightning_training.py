@@ -64,5 +64,5 @@ class LightningTrainingTransformer(LightningModule):
         
     def configure_optimizers(self):      
         opt = self.optimizer(self.parameters(), lr=self.lr, maximize=False)
-        scheduler = lr_scheduler(opt, mode='min', factor=0.95, patience=5, verbose=False) # depends on lr_scheduler. Needs more flexibility
+        scheduler = self.lr_scheduler(opt, mode='min', factor=0.95, patience=5, verbose=False) # depends on lr_scheduler. Needs more flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_loss"}]
