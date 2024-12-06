@@ -34,16 +34,17 @@ if dataset_type == 'val2':
         for source in sources:    
             NPEs_counts_array = load_raw_data(path_to_raw_data, source, dataset_dir_name+f"_{j+1}", n_datasets, kNPE_bins_edges)
             NPEs_counts_arrays.append(NPEs_counts_array)
-        NPEs_counts_arrays =  np.vstack(NPEs_counts_arrays, dtype=np.float64)
-        NPEs_counts_tensor =  torch.tensor(NPEs_counts_arrays, dtype=torch.float64)
+        NPEs_counts_arrays = np.vstack(NPEs_counts_arrays, dtype=np.float64)
+        NPEs_counts_tensor = torch.tensor(NPEs_counts_arrays, dtype=torch.float64)
         
         params_grid_scaled = np.repeat(params_values_scaled[j].reshape(1, -1), n_datasets, axis=0)
-        params_grid_scaled_tensor = torch.tensor(params_grid_scaled, dtype=torch.float64)
+        params_grid_scaled_tiled = np.tile(params_grid_scaled, (n_sources, 1))
+        params_grid_scaled_tiled_tensor = torch.tensor(params_grid_scaled_tiled, dtype=torch.float64)
         source_types = construct_source_types_vector(n_datasets, n_sources)
         source_types_tensor = torch.tensor(source_types, dtype=torch.int64)
 
         torch.save(NPEs_counts_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_spectra.pt")
-        torch.save(params_grid_scaled_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_params.pt")
+        torch.save(params_grid_scaled_tiled_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_params.pt")
         torch.save(source_types_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_{j+1}_source_types.pt")
 elif dataset_type == "training" or dataset_type == "val1":
     if dataset_type == "training":
@@ -60,7 +61,8 @@ elif dataset_type == "training" or dataset_type == "val1":
 
     params_grid = construct_params_grid(kB, fC, LY, grid_size)
     params_grid_scaled = scaler.transform(params_grid)
-    params_grid_scaled_tensor = torch.tensor(params_grid_scaled, dtype=torch.float64)
+    params_grid_scaled_tiled = np.tile(params_grid_scaled, (n_sources, 1))
+    params_grid_scaled_tiled_tensor = torch.tensor(params_grid_scaled_tiled, dtype=torch.float64)
     source_types = construct_source_types_vector(n_points, n_sources)
     source_types_tensor = torch.tensor(source_types, dtype=torch.int64)
 
@@ -72,7 +74,7 @@ elif dataset_type == "training" or dataset_type == "val1":
     NPEs_counts_tensor = torch.tensor(NPEs_counts_arrays, dtype=torch.float64)
     
     torch.save(NPEs_counts_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_spectra.pt")
-    torch.save(params_grid_scaled_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_params.pt")
+    torch.save(params_grid_scaled_tiled_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_params.pt")
     torch.save(source_types_tensor, f"{path_to_processed_data}/{dataset_type}/{dataset_type}_source_types.pt")
 else:
     raise Exception('Choose between training, val1 and val2!')

@@ -1,1 +1,1 @@
-from .configs import configs
+from .data_configs import data_configs

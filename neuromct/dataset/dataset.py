@@ -28,6 +28,7 @@ class JMLDataset(Dataset):
         self.transform = transform
 
         # Verify data consistency
+        print(len(self.spectra), len(self.params), len(self.source_types))
         if len(self.spectra) != len(self.params) or len(self.spectra) != len(self.source_types):
             raise ValueError("Mismatch in the lengths of spectra, params, and source_types tensors.")
 
