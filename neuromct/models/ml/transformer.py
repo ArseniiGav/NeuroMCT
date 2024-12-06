@@ -4,9 +4,9 @@ import torch.nn as nn
 
 class TEDE(nn.Module):
     def __init__(self,
-             output_dim: int,
              param_dim: int,
              n_sources: int,
+             output_dim: int,
              d_model: int,
              nhead: int,
              num_encoder_layers: int,
