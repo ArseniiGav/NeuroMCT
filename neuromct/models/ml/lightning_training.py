@@ -27,13 +27,13 @@ class LightningTrainingTransformer(LightningModule):
         self.val2_loss_to_plot = []
         self.val_loss_to_plot = []
     
-    def _compute_and_log_losses(self, y_pred, y, data_type):
-        loss = self.loss_function(y_pred, y)
+    def _compute_and_log_losses(self, spectra_predict, spectra, data_type):
+        loss = self.loss_function(spectra_predict, spectra)
         self.log(f"{data_type}_loss", loss, prog_bar=True)
         return loss
 
-    def _compute_and_log_val_losses(self, y_pred, y, data_type):
-        loss = self.metric_function(y_pred, y)
+    def _compute_and_log_val_losses(self, spectra_predict, spectra, data_type):
+        loss = self.metric_function(spectra_predict, spectra)
         self.log(f"{data_type}_loss", loss, prog_bar=True, on_epoch=True)
         return loss
 
