@@ -3,9 +3,9 @@ import torch.optim as optim
 from lightning import LightningModule
 
 
-class LightningTrainingTransformer(LightningModule):
+class LightningTraining(LightningModule):
     def __init__(self,
-             transformer: nn.Module,
+             model: nn.Module,
              loss_function: nn.Module,
              metric_function: nn.Module,
              optimizer: optim.Optimizer,
@@ -13,8 +13,8 @@ class LightningTrainingTransformer(LightningModule):
              lr: float,
              **kwargs,
         ):
-        super(LightningTrainingTransformer, self).__init__()
-        self.transformer = transformer
+        super(LightningTraining, self).__init__()
+        self.model = model
         self.loss_function = loss_function
         self.metric_function = metric_function
         self.optimizer = optimizer
@@ -39,14 +39,14 @@ class LightningTrainingTransformer(LightningModule):
 
     def training_step(self, batch):
         spectra, params, source_types = batch
-        spectra_predict = self.transformer(params, source_types)
+        spectra_predict = self.model(params, source_types)
         loss = self._compute_and_log_losses(spectra_predict, spectra, "training")
         self.train_loss_to_plot.append(loss.item())
         return loss
 
     def validation_step(self, batch, dataloader_idx=0):
         spectra, params, source_types = batch
-        spectra_predict = self.transformer(params, source_types)
+        spectra_predict = self.model(params, source_types)
         if dataloader_idx == 0:
             loss = self._compute_and_log_val_losses(spectra_predict, spectra, "val1")
             self.val1_epoch_loss = loss.item()

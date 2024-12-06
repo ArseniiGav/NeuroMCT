@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class TransformerRegressor(nn.Module):
+class TEDE(nn.Module):
     def __init__(self,
              output_dim: int,
              param_dim: int,
@@ -13,7 +13,7 @@ class TransformerRegressor(nn.Module):
              dim_feedforward: int,
              dropout: float,
         ):
-        super(TransformerRegressor, self).__init__()
+        super(TEDE, self).__init__()
 
         self.param_emb_layer = nn.Linear(param_dim, d_model // 2)
         self.source_type_emb_layer = nn.Embedding(n_sources, d_model // 2)
@@ -33,10 +33,10 @@ class TransformerRegressor(nn.Module):
             if module.bias is not None:
                 module.bias.data.fill_(0.0)
 
-    def forward(self, x):
-        param_emb = self.param_emb_layer(x[:, :self.param_dim])
-        source_type_emb = self.source_type_emb_layer(x[:, self.param_dim])
+    def forward(self, params, source_types):
+        param_emb = self.param_emb_layer(params)
+        source_type_emb = self.source_type_emb_layer(source_types)
         x = torch.cat([param_emb, source_type_emb], dim=1)
         x = self.transformer_encoder(x)
-        x = self.regression_head(x)
-        return x
+        spectra = self.regression_head(x)
+        return spectra

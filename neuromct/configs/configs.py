@@ -2,13 +2,16 @@ import numpy as np
 
 
 configs = {
+    # paths' configs
     "path_to_models": "/storage/jmct_paper/saved_models", 
     "path_to_processed_data": "/storage/jmct_paper/processed_data", 
     "path_to_raw_data": "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events",
 
+    # sources' configs
     "n_sources": 5,
     "sources": ['Cs137', 'K40', 'Co60', 'AmBe', 'AmC'],
 
+    # data processing configs
     "training_grid_size": 21,
     "kB_training_grid_lims": (6, 24.1, 0.9), # g/cm2/GeV
     "fC_training_grid_lims": (0, 1.01, 0.05),
@@ -24,5 +27,10 @@ configs = {
     "fC_val2_values": (0.075, 0.475, 0.975),
     "LY_val2_values": (8300, 9900, 11900),
 
-    "kNPE_bins_edges": np.arange(0.0, 16.01, 0.02, dtype=np.float64) # kNPE
+    # bining for the tede model
+    "kNPE_bins_edges": np.arange(0.0, 16.01, 0.02, dtype=np.float64), # kNPE
+
+    # tede models configs
+    "output_dim": 800,
+    "params_dim": 3
 }
