@@ -18,7 +18,7 @@ class TransformerRegressor(nn.Module):
         self.param_emb_layer = nn.Linear(param_dim, d_model // 2)
         self.source_type_emb_layer = nn.Embedding(n_sources, d_model // 2)
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward, dropout=dropout)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=num_encoder_layers)
         self.regression_head = nn.Sequential(
             nn.Linear(d_model, d_model),
             nn.GELU(),
