@@ -23,7 +23,7 @@ class TransformerRegressor(nn.Module):
             nn.Linear(d_model, d_model),
             nn.GELU(),
             nn.Linear(d_model, output_dim),
-            nn.Softplus()
+            nn.Softmax()
         )
         self.apply(self._init_weights)
 
