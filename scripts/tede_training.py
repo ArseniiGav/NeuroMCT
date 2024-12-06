@@ -90,7 +90,7 @@ trainer_regressor.fit(
 
 print(checkpoint_callback.best_model_path)
 print(checkpoint_callback.best_model_score)
-best_model = TEDE.load_from_checkpoint(
+best_tede_model = TEDE.load_from_checkpoint(
     checkpoint_callback.best_model_path,
     param_dim=data_configs['params_dim'],
     n_sources=data_configs['n_sources'],
@@ -103,4 +103,4 @@ best_model = TEDE.load_from_checkpoint(
 )
 
 # Save the regressor model
-torch.save(best_model.state_dict(), f"{data_configs['path_to_saved_models']}/Regressor.pth")
+torch.save(best_tede_model.state_dict(), f"{data_configs['path_to_saved_models']}/tede_model.pth")
