@@ -1,0 +1,11 @@
+{
+    "N_resamplings": 1000,
+    "batch_size": 32,
+    "lr": 5e-4,
+    "output_dim": 800,
+    "d_model": 128,
+    "nhead": 8,
+    "num_encoder_layers": 5,
+    "dim_feedforward": 32,
+    "dropout": 0.1
+}
