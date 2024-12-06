@@ -38,20 +38,20 @@ class LightningTrainingTransformer(LightningModule):
         return loss
 
     def training_step(self, batch):
-        x, y = batch
-        y_pred = self(x)
-        loss = self._compute_and_log_losses(y_pred, y, "training")
+        spectra, params, source_types = batch
+        spectra_predict = self.transformer(params, source_types)
+        loss = self._compute_and_log_losses(spectra_predict, spectra, "training")
         self.train_loss_to_plot.append(loss.item())
         return loss
 
     def validation_step(self, batch, dataloader_idx=0):
-        x, y = batch
-        y_pred = self(x)
+        spectra, params, source_types = batch
+        spectra_predict = self.transformer(params, source_types)
         if dataloader_idx == 0:
-            loss = self._compute_and_log_val_losses(y_pred, y, "val1")
+            loss = self._compute_and_log_val_losses(spectra_predict, spectra, "val1")
             self.val1_epoch_loss = loss.item()
         elif dataloader_idx == 1:
-            loss = self._compute_and_log_val_losses(y_pred, y, "val2")
+            loss = self._compute_and_log_val_losses(spectra_predict, spectra, "val2")
             self.val2_epoch_loss = loss.item()
         return loss
         
