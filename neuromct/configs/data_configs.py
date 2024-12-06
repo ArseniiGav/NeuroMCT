@@ -28,5 +28,5 @@ data_configs = {
     "LY_val2_values": (8300, 9900, 11900),
 
     "kNPE_bins_edges": np.arange(0.0, 16.01, 0.02, dtype=np.float64), # kNPE
-    "num_params": 3 # kB, fC, LY
+    "params_dim": 3 # kB, fC, LY
 }

@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from neuromct.dataset import load_minimax_scaler, load_raw_data
 from neuromct.utils import construct_params_grid, construct_source_types_vector
-from neuromct.configs import configs
+from neuromct.configs import data_configs
 
 
 parser = argparse.ArgumentParser(description='Process the raw data and build model inputs')
@@ -11,23 +11,23 @@ parser.add_argument("--dataset_type", type=str, default="", help='Dataset type: 
 args = parser.parse_args()
 dataset_type = args.dataset_type
 
-path_to_processed_data = configs['path_to_processed_data']
-path_to_raw_data = configs['path_to_raw_data']
-path_to_models = configs['path_to_models']
+path_to_processed_data = data_configs['path_to_processed_data']
+path_to_raw_data = data_configs['path_to_raw_data']
+path_to_models = data_configs['path_to_models']
 scaler = load_minimax_scaler(path_to_models)
 
-n_sources = configs['n_sources']
-sources = configs['sources']
+n_sources = data_configs['n_sources']
+sources = data_configs['sources']
 
 if dataset_type == 'val2':
     dataset_dir_name = "validation_data2"
-    n_datasets = configs['val2_n_datasets']
-    kB_values = np.array(configs['kB_val2_values'], dtype=np.float64).reshape(-1, 1)
-    fC_values = np.array(configs['fC_val2_values'], dtype=np.float64).reshape(-1, 1)
-    LY_values = np.array(configs['LY_val2_values'], dtype=np.float64).reshape(-1, 1)
+    n_datasets = data_configs['val2_n_datasets']
+    kB_values = np.array(data_configs['kB_val2_values'], dtype=np.float64).reshape(-1, 1)
+    fC_values = np.array(data_configs['fC_val2_values'], dtype=np.float64).reshape(-1, 1)
+    LY_values = np.array(data_configs['LY_val2_values'], dtype=np.float64).reshape(-1, 1)
     params_values = np.concatenate((kB_values, fC_values, LY_values), axis=1, dtype=np.float64)
     params_values_scaled = scaler.transform(params_values)
-    kNPE_bins_edges = configs['kNPE_bins_edges']
+    kNPE_bins_edges = data_configs['kNPE_bins_edges']
     
     for j in range(len(kB_values)):      
         NPEs_counts_arrays = []
@@ -52,12 +52,12 @@ elif dataset_type == "training" or dataset_type == "val1":
     elif dataset_type == "val1":
         dataset_dir_name = "validation_data"
 
-    grid_size = configs[f'{dataset_type}_grid_size']
+    grid_size = data_configs[f'{dataset_type}_grid_size']
     n_points = grid_size**3
-    kB = np.arange(*configs[f'kB_{dataset_type}_grid_lims'], dtype=np.float64)
-    fC = np.arange(*configs[f'fC_{dataset_type}_grid_lims'], dtype=np.float64)
-    LY = np.arange(*configs[f'LY_{dataset_type}_grid_lims'], dtype=np.float64)
-    kNPE_bins_edges = configs['kNPE_bins_edges']
+    kB = np.arange(*data_configs[f'kB_{dataset_type}_grid_lims'], dtype=np.float64)
+    fC = np.arange(*data_configs[f'fC_{dataset_type}_grid_lims'], dtype=np.float64)
+    LY = np.arange(*data_configs[f'LY_{dataset_type}_grid_lims'], dtype=np.float64)
+    kNPE_bins_edges = data_configs['kNPE_bins_edges']
 
     params_grid = construct_params_grid(kB, fC, LY, grid_size)
     params_grid_scaled = scaler.transform(params_grid)

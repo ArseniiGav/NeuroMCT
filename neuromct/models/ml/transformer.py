@@ -28,10 +28,12 @@ class TEDE(nn.Module):
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
-        if isinstance(module, (nn.Linear, nn.Embedding)):
+        if isinstance(module, nn.Linear):
             nn.init.orthogonal_(module.weight)
             if module.bias is not None:
                 module.bias.data.fill_(0.0)
+        elif isinstance(module, nn.Embedding):
+            nn.init.orthogonal_(module.weight)
 
     def forward(self, params, source_types):
         param_emb = self.param_emb_layer(params)

@@ -126,4 +126,4 @@ dmypy.json
 
 # my files
 notebooks/
-notebooks/lightning_logs/
+lightning_logs/

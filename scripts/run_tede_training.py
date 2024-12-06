@@ -27,16 +27,16 @@ val2_2_data = JMLDataset(dataset_type="val2_2", path_to_processed_data=data_conf
 val2_3_data = JMLDataset(dataset_type="val2_3", path_to_processed_data=data_configs['path_to_processed_data'])
 
 train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=20)
-val1_loader = DataLoader(val1_data, batch_size=val1_data.shape[0], shuffle=False)
-val2_1_loader = DataLoader(val2_1_data, batch_size=val2_1_data.shape[0], shuffle=False)
-val2_2_loader = DataLoader(val2_2_data, batch_size=val2_2_data.shape[0], shuffle=False)
-val2_3_loader = DataLoader(val2_3_data, batch_size=val2_3_data.shape[0], shuffle=False)
+val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False)
+val2_1_loader = DataLoader(val2_1_data, batch_size=val2_1_data.__len__(), shuffle=False)
+val2_2_loader = DataLoader(val2_2_data, batch_size=val2_2_data.__len__(), shuffle=False)
+val2_3_loader = DataLoader(val2_3_data, batch_size=val2_3_data.__len__(), shuffle=False)
 
 loss_function = CosineDistanceLoss()
 val_metric_function = CosineDistanceLoss()
 
-optimizer = optim.Adam()
-lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau()
+optimizer = optim.Adam
+lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
 
 monitor_metric_es = "val_loss"
 monitor_metric_checkpoint = "val_loss"
@@ -52,7 +52,7 @@ tede_model = TEDE(
     num_encoder_layers=args.num_encoder_layers,
     dim_feedforward=args.dim_feedforward,
     dropout=args.dropout,
-)
+).double()
 
 tede_model_lightning_training = TEDELightningTraining(
     model=tede_model,

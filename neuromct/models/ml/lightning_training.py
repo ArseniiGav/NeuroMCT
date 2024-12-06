@@ -44,7 +44,7 @@ class TEDELightningTraining(LightningModule):
         self.train_loss_to_plot.append(loss.item())
         return loss
 
-    def validation_step(self, batch, dataloader_idx=0):
+    def validation_step(self, batch, batch_idx, dataloader_idx=0):
         spectra, params, source_types = batch
         spectra_predict = self.model(params, source_types)
         if dataloader_idx == 0:

@@ -22,13 +22,12 @@ class JMLDataset(Dataset):
         else:
             raise ValueError("Invalid dataset_type! Choose between 'training', 'val1', 'val2_1', 'val2_2', and 'val2_3'.")
 
-        self.spectra = torch.load(spectra_path)
-        self.params = torch.load(params_path)
-        self.source_types = torch.load(source_types_path)
+        self.spectra = torch.load(spectra_path, weights_only=True)
+        self.params = torch.load(params_path, weights_only=True)
+        self.source_types = torch.load(source_types_path, weights_only=True)
         self.transform = transform
 
         # Verify data consistency
-        print(len(self.spectra), len(self.params), len(self.source_types))
         if len(self.spectra) != len(self.params) or len(self.spectra) != len(self.source_types):
             raise ValueError("Mismatch in the lengths of spectra, params, and source_types tensors.")
 
