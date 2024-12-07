@@ -2,6 +2,6 @@ NeuroMCT: Precise Data-driven Monte Carlo Tuning with Machine Learning for the J
 
 Transformer Encoder-based Density estimator (TEDE):
 <div align="center">
-  <img src="docs/tede.png" width="600">
+  <img src="docs/tede.jpg" width="600">
 </div>
 
