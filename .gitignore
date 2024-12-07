@@ -127,4 +127,3 @@ dmypy.json
 # my files
 notebooks/
 lightning_logs/
-repo_docs/
