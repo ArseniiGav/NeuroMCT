@@ -6,8 +6,6 @@ def tede_argparse():
     parser = argparse.ArgumentParser(description='Train the TEDE model')
     parser.add_argument("--config", type=str, default='neuromct/configs/tede_training_configs.json',
                          help="The path to the JSON config file")
-    parser.add_argument("--N_resamplings", type=int, default=1000,
-                         help='The number of Poisson resamples for data augmentation')
     parser.add_argument("--batch_size", type=int, default=32,
                          help='The batch size (default=32). Note, that the effective batch size is batch_size * N_resamplings')
     parser.add_argument("--lr", type=float, default=5e-4,
