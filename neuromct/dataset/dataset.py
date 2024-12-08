@@ -38,9 +38,8 @@ class JMLDataset(Dataset):
         spectra = self.spectra[idx]
         params = self.params[idx]
         source_types = self.source_types[idx]
-        sample = (spectra, params, source_types)
 
         if self.transform:
-            sample = self.transform(sample)
+            spectra = self.transform(spectra)
 
-        return sample
+        return spectra, params, source_types
