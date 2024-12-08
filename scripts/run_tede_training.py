@@ -1,35 +1,32 @@
 import torch
 import torch.optim as optim
-from torchvision import transforms
 from torch.utils.data import DataLoader, ConcatDataset
 from neuromct.models.ml import TEDE, TEDELightningTraining
 from neuromct.models.ml.losses import CosineDistanceLoss
-from neuromct.dataset import PoissonNoise, NormalizeToUnity, JMLDataset
 from neuromct.configs import data_configs
-from neuromct.utils import tede_argparse
+from neuromct.utils import tede_argparse, create_dataset, define_transformations
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning import Trainer
 
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 args = tede_argparse()
 
-transform = transforms.Compose([
-    PoissonNoise(),     # Apply Poisson resampling
-    NormalizeToUnity()  # Normalize to unity
-])
+training_data_transformations = define_transformations("training")
+val_data_transformations = define_transformations("val")
 
-train_data = JMLDataset(dataset_type="training", path_to_processed_data=data_configs['path_to_processed_data'], transform=transform)
-val1_data = JMLDataset(dataset_type="val1", path_to_processed_data=data_configs['path_to_processed_data'])
-val2_1_data = JMLDataset(dataset_type="val2_1", path_to_processed_data=data_configs['path_to_processed_data'])
-val2_2_data = JMLDataset(dataset_type="val2_2", path_to_processed_data=data_configs['path_to_processed_data'])
-val2_3_data = JMLDataset(dataset_type="val2_3", path_to_processed_data=data_configs['path_to_processed_data'])
+train_data = create_dataset("training", training_data_transformations)
+val1_data = create_dataset("val1", val_data_transformations)
+val2_1_data = create_dataset("val2_1", val_data_transformations)
+val2_2_data = create_dataset("val2_2", val_data_transformations)
+val2_3_data = create_dataset("val2_3", val_data_transformations)
 val2_data = ConcatDataset([val2_1_data, val2_2_data, val2_3_data])
 
-train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=20)
-val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False)
-val2_loader = DataLoader(val2_data, batch_size=args.batch_size, shuffle=False)
+train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=20, pin_memory=True)
+val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
+val2_loader = DataLoader(val2_data, batch_size=args.batch_size, shuffle=False, pin_memory=True)
 
 loss_function = CosineDistanceLoss()
 val_metric_function = CosineDistanceLoss()
@@ -51,7 +48,7 @@ tede_model = TEDE(
     num_encoder_layers=args.num_encoder_layers,
     dim_feedforward=args.dim_feedforward,
     dropout=args.dropout,
-).double()
+).double().to(device)
 
 tede_model_lightning_training = TEDELightningTraining(
     model=tede_model,
@@ -85,8 +82,6 @@ trainer_tede.fit(
     ]
 )
 
-print(checkpoint_callback.best_model_path)
-print(checkpoint_callback.best_model_score)
 best_tede_model = TEDELightningTraining.load_from_checkpoint(
     checkpoint_path=checkpoint_callback.best_model_path,
     model=tede_model,
@@ -94,8 +89,8 @@ best_tede_model = TEDELightningTraining.load_from_checkpoint(
     val_metric_function=val_metric_function,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
-    lr=args.lr
+    lr=args.lr,
 )
 
 # Save the tede model
-torch.save(best_tede_model.state_dict(), f"{data_configs['path_to_models']}/tede_model.pth")
+torch.save(best_tede_model.model.state_dict(), f"{data_configs['path_to_models']}/tede_model.pth")
