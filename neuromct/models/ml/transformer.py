@@ -50,5 +50,5 @@ class TEDE(nn.Module):
         source_type_emb = self.source_type_emb_layer(source_types).squeeze(dim=1) # collapse the label dim
         x = torch.cat((param_emb, source_type_emb), dim=1)
         x = self.transformer_encoder(x)
-        spectra = self.regression_head(x)
-        return spectra
+        spectra_pdf = self.regression_head(x)
+        return spectra_pdf
