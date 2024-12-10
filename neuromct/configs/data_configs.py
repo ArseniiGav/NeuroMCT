@@ -1,15 +1,30 @@
 import numpy as np
 
 
+sources = ['Cs137', 'K40', 'Co60', 'AmBe', 'AmC']
+sources_names_to_vis = [
+    r'$\rm {}^{137} Cs$',
+    r'$\rm {}^{40} K$', 
+    r'$\rm {}^{60} Co$', 
+    r'$\rm {}^{241}Am \text{-} Be$'
+    r'$\rm {}^{241}Am \text{-} {}^{13}C $'
+]
+sources_colors_to_vis = ['darkgreen', 'royalblue', 'firebrick', 'indigo', 'peru']
+bins = np.arange(0.0, 16.01, 0.02, dtype=np.float64)
+n_bins = bins.shape[0]
+
 data_configs = {
     # paths' configs
     "path_to_models": "/storage/jmct_paper/saved_models", 
+    "path_to_plots": "/storage/jmct_paper/plots"
     "path_to_processed_data": "/storage/jmct_paper/processed_data", 
     "path_to_raw_data": "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events",
 
     # sources' configs
     "n_sources": 5,
-    "sources": ['Cs137', 'K40', 'Co60', 'AmBe', 'AmC'],
+    "sources": sources,
+    "sources_names_to_vis": sources_names_to_vis,   
+    "sources_colors_to_vis": sources_colors_to_vis,
 
     # data processing configs
     "training_grid_size": 21,
@@ -27,6 +42,7 @@ data_configs = {
     "fC_val2_values": (0.075, 0.475, 0.975),
     "LY_val2_values": (8300, 9900, 11900),
 
-    "kNPE_bins_edges": np.arange(0.0, 16.01, 0.02, dtype=np.float64), # kNPE
+    "kNPE_bins_edges": bins, # kNPE
+    "n_bins": n_bins,
     "params_dim": 3 # kB, fC, LY
 }
