@@ -5,10 +5,12 @@ from neuromct.models.ml import TEDE, TEDELightningTraining
 from neuromct.models.ml.losses import CosineDistanceLoss
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse, create_dataset, define_transformations
+from neuromct.utils import ModelResultsVisualizator
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning import Trainer
+from ot.lp import wasserstein_1d
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -28,8 +30,8 @@ train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
 val2_loader = DataLoader(val2_data, batch_size=args.batch_size, shuffle=False, pin_memory=True)
 
-loss_function = CosineDistanceLoss()
-val_metric_function = CosineDistanceLoss()
+loss_function = wasserstein_1d
+val_metric_function = wasserstein_1d
 
 optimizer = optim.Adam
 lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
@@ -38,6 +40,8 @@ monitor_metric_es = "val_loss"
 monitor_metric_checkpoint = "val_loss"
 checkpoint_callback = ModelCheckpoint(save_top_k=1, monitor=monitor_metric_checkpoint, mode="min")
 early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=50)
+
+model_res_visualizator = ModelResultsVisualizator()
 
 tede_model = TEDE(
     param_dim=data_configs['params_dim'],
@@ -56,7 +60,8 @@ tede_model_lightning_training = TEDELightningTraining(
     val_metric_function=val_metric_function,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
-    lr=args.lr
+    lr=args.lr,
+    res_visualizator=model_res_visualizator,
 )
 
 trainer_tede = Trainer(

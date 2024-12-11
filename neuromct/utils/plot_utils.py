@@ -27,7 +27,7 @@ class ModelResultsVisualizator:
         self.params_dim = data_configs['params_dim']
 
         val1_data = self._load_val_data_to_vis(dataset_type="val1")
-        self.val1_data_to_vis = self._get_data_to_vis("val1", val1_data, self.params_values_to_vis)
+        self.val1_data_to_vis = self._get_data_to_vis("val1", val1_data)
         self.val1_spectra_to_vis = self.val1_data_to_vis[0]
         self.val1_params_to_vis_transformed = self.scaler.inverse_transform(self.val1_data_to_vis[1])
 
@@ -110,7 +110,6 @@ class ModelResultsVisualizator:
             current_epoch: int,
             global_step: int,
             val1_metric: float,
-            save: bool
         ) -> None: 
 
         fig, ax = plt.subplots(self.params_dim, self.n_params_values_to_vis,
@@ -163,9 +162,8 @@ class ModelResultsVisualizator:
         suptitle = self._get_subplot_title(current_epoch, global_step, val1_metric, val_data_type=1)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
-        if save:
-            fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.png')
-            fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.pdf')
         plt.close(fig)
 
     def plot_val2_spectra(
@@ -174,7 +172,6 @@ class ModelResultsVisualizator:
             current_epoch: int,
             global_step: int,
             val2_metric: float,
-            save: bool
         ) -> None:
               
         fig, ax = plt.subplots(1, self.params_dim, 
@@ -226,9 +223,8 @@ class ModelResultsVisualizator:
         suptitle = self._get_subplot_title(current_epoch, global_step, val2_metric, val_data_type=2)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
-        if save:
-            fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.png')
-            fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.pdf')
         plt.close(fig)
 
     # def plot_val_metrics(self, save=False):
