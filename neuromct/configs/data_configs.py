@@ -25,6 +25,7 @@ data_configs = {
     "sources": sources,
     "sources_names_to_vis": sources_names_to_vis,   
     "sources_colors_to_vis": sources_colors_to_vis,
+    "params_values_to_vis": [0.0750, 0.3750, 0.6750, 0.9750],
 
     # data processing configs
     "training_grid_size": 21,

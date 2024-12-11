@@ -9,13 +9,13 @@ matplotlib_setup(tick_labelsize=14, axes_labelsize=14, legend_fontsize=9)
 
 
 class ModelResultsVisualizator:
-    def __init__(
-            self,
-            values_to_vis: list,
-        ):
+    def __init__(self):
 
         path_to_models = data_configs['path_to_models']
         self.scaler = load_minimax_scaler(path_to_models)
+
+        self.params_values_to_vis = data_configs['params_values_to_vis']
+        self.n_params_values_to_vis = len(self.params_values_to_vis)
 
         self.path_to_plots = data_configs['path_to_plots']
         self.path_to_processed_data = data_configs['path_to_processed_data']
@@ -26,11 +26,8 @@ class ModelResultsVisualizator:
         self.n_bins = data_configs['n_bins']
         self.params_dim = data_configs['params_dim']
 
-        self.values_to_vis = values_to_vis
-        self.n_values_to_vis = len(values_to_vis)
-
         val1_data = self._load_val_data_to_vis(dataset_type="val1")
-        self.val1_data_to_vis = self._get_data_to_vis("val1", val1_data, values_to_vis)
+        self.val1_data_to_vis = self._get_data_to_vis("val1", val1_data, self.params_values_to_vis)
         self.val1_spectra_to_vis = self.val1_data_to_vis[0]
         self.val1_params_to_vis_transformed = self.scaler.inverse_transform(self.val1_data_to_vis[1])
 
@@ -51,7 +48,7 @@ class ModelResultsVisualizator:
         data = (spectra, params, source_types)
         return data
     
-    def _get_data_to_vis(self, dataset_type, data, values_to_vis):
+    def _get_data_to_vis(self, dataset_type, data):
         if dataset_type == "val1":
             spectra, params, source_types = data
 
@@ -59,18 +56,18 @@ class ModelResultsVisualizator:
             params_samples_to_vis = []
             source_types_samples_to_vis = []
             for j in range(self.params_dim):
-                if len(values_to_vis) > 1:
+                if self.n_params_values_to_vis > 1:
                     param_vary_condition = torch.logical_or(
-                        (params[:, j] == values_to_vis[0]), (params[:, 0] == values_to_vis[1]))
-                    for i in range(2, len(values_to_vis)):
+                        (params[:, j] == self.params_values_to_vis[0]), (params[:, 0] == self.params_values_to_vis[1]))
+                    for i in range(2, len(self.params_values_to_vis)):
                         param_vary_condition = torch.logical_or(
-                            param_vary_condition, (params[:, j] == values_to_vis[i]))
+                            param_vary_condition, (params[:, j] == self.params_values_to_vis[i]))
                     for k in range(self.params_dim):
                         if k != j:
                             param_vary_condition = torch.logical_and(
                                 param_vary_condition, (params[:, k] == 0.4750))
                 else:
-                    param_vary_condition = params[:, j] == values_to_vis[0]
+                    param_vary_condition = params[:, j] == self.params_values_to_vis[0]
                     for k in range(self.params_dim):
                         if k != j:
                             param_vary_condition = torch.logical_and(
@@ -116,13 +113,13 @@ class ModelResultsVisualizator:
             save: bool
         ) -> None: 
 
-        fig, ax = plt.subplots(self.params_dim, self.n_values_to_vis,
-                               figsize=(self.params_dim*6, self.n_values_to_vis*3))
+        fig, ax = plt.subplots(self.params_dim, self.n_params_values_to_vis,
+                               figsize=(self.params_dim*6, self.n_params_values_to_vis*3))
         ax = ax.flatten()
         for m in range(self.params_dim):
-            for i in range(self.n_values_to_vis):
-                j = i % self.n_values_to_vis + m * self.n_values_to_vis
-                k = i // self.n_values_to_vis
+            for i in range(self.n_params_values_to_vis):
+                j = i % self.n_params_values_to_vis + m * self.n_params_values_to_vis
+                k = i // self.n_params_values_to_vis
 
                 current_params_transformed = self.val1_params_to_vis_transformed[m][i]
                 subplot_title = self._get_subplot_title(current_params_transformed[m][i])
@@ -158,9 +155,9 @@ class ModelResultsVisualizator:
                 ax[j].set_yscale("log")
                 ax[j].set_xlim(0.0, 16.0)
                 
-                if j >= self.n_values_to_vis * (self.params_dim - 1):
+                if j >= self.n_params_values_to_vis * (self.params_dim - 1):
                     ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$")
-                if j % self.n_values_to_vis == 0:
+                if j % self.n_params_values_to_vis == 0:
                     ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} \ | \ k_{B}, f_{C}, L_{y})$")
         
         suptitle = self._get_subplot_title(current_epoch, global_step, val1_metric, val_data_type=1)
