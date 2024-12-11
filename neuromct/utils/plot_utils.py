@@ -1,10 +1,10 @@
 import numpy
 import torch
 import matplotlib.pyplot as plt
+from .matplotlib_setup import matplotlib_setup
+from .processed_data_utils import get_val2_data_rates
 from neuromct.dataset import load_minimax_scaler
-from neuromct.utils import matplotlib_setup
 from neuromct.configs import data_configs
-from neuromct.utils import get_val2_data_rates
 matplotlib_setup(tick_labelsize=14, axes_labelsize=14, legend_fontsize=9)
 
 
