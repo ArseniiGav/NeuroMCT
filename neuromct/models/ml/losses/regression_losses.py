@@ -47,15 +47,20 @@ class WassersteinLoss(nn.Module):
         if self.hist_based:
             batch_size = spectra_true.shape[0]
             self.kNPE_bins_centers_repeated = self.kNPE_bins_centers.repeat((batch_size, 1)).T
-            loss = wasserstein_1d(
-                self.kNPE_bins_centers_repeated,
-                self.kNPE_bins_centers_repeated,
-                spectra_predict.T,
-                spectra_true.T
-            )
+
+            #torch.cumsum used in wasserstein_1d from POT does not have a deterministic implementation            
+            with torch.use_deterministic_algorithms(False):
+                loss = wasserstein_1d(
+                    self.kNPE_bins_centers_repeated,
+                    self.kNPE_bins_centers_repeated,
+                    spectra_predict.T,
+                    spectra_true.T
+                )
         else:
-            loss = wasserstein_1d(
-                spectra_predict.T,
-                spectra_true.T
-            )
+            #torch.cumsum used in wasserstein_1d from POT does not have a deterministic implementation            
+            with torch.use_deterministic_algorithms(False):
+                loss = wasserstein_1d(
+                    spectra_predict.T,
+                    spectra_true.T
+                )
         return torch.mean(loss)
