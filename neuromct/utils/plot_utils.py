@@ -2,8 +2,7 @@ import numpy
 import torch
 import matplotlib.pyplot as plt
 from .matplotlib_setup import matplotlib_setup
-from .processed_data_utils import get_val2_data_rates
-from neuromct.dataset import load_minimax_scaler
+from neuromct.dataset import load_minimax_scaler, get_val2_data_rates
 from neuromct.configs import data_configs
 matplotlib_setup(tick_labelsize=14, axes_labelsize=14, legend_fontsize=9)
 
@@ -29,6 +28,7 @@ class ModelResultsVisualizator:
         val1_data = self._load_val_data_to_vis(dataset_type="val1")
         self.val1_data_to_vis = self._get_data_to_vis("val1", val1_data)
         self.val1_spectra_to_vis = self.val1_data_to_vis[0]
+        print(self.val1_data_to_vis[1])
         self.val1_params_to_vis_transformed = self.scaler.inverse_transform(self.val1_data_to_vis[1])
 
         val2_1_data = self._load_val_data_to_vis(dataset_type="val2_1")
@@ -58,7 +58,7 @@ class ModelResultsVisualizator:
             for j in range(self.params_dim):
                 if self.n_params_values_to_vis > 1:
                     param_vary_condition = torch.logical_or(
-                        (params[:, j] == self.params_values_to_vis[0]), (params[:, 0] == self.params_values_to_vis[1]))
+                        (params[:, j] == self.params_values_to_vis[0]), (params[:, j] == self.params_values_to_vis[1]))
                     for i in range(2, len(self.params_values_to_vis)):
                         param_vary_condition = torch.logical_or(
                             param_vary_condition, (params[:, j] == self.params_values_to_vis[i]))
@@ -181,8 +181,8 @@ class ModelResultsVisualizator:
             j = i // self.n_sources
             k = i % self.n_sources
 
-            current_params_transformed = self.val1_params_to_vis_transformed[m][i]
-            subplot_title = self._get_subplot_title(current_params_transformed[m][i])
+            current_params_transformed = self.val1_params_to_vis_transformed[j][k]
+            subplot_title = self._get_subplot_title(current_params_transformed[j][k])
 
             ########### plot truth ###########
             ax[j].stairs(
