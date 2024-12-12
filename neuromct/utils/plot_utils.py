@@ -15,6 +15,7 @@ class ModelResultsVisualizator:
 
         self.params_values_to_vis = data_configs['params_values_to_vis']
         self.n_params_values_to_vis = len(self.params_values_to_vis)
+        self.base_value_to_vis = data_configs['base_value_to_vis']
 
         self.path_to_plots = data_configs['path_to_plots']
         self.path_to_processed_data = data_configs['path_to_processed_data']
@@ -70,7 +71,7 @@ class ModelResultsVisualizator:
                         if k != j:
                             param_vary_condition = torch.logical_and(
                                 param_vary_condition,
-                                torch.isclose(params[:, k], 0.4750)
+                                torch.isclose(params[:, k], self.base_value_to_vis)
                             )
                 else:
                     param_vary_condition = torch.isclose(params[:, j], self.params_values_to_vis[0])
@@ -78,7 +79,7 @@ class ModelResultsVisualizator:
                         if k != j:
                             param_vary_condition = torch.logical_and(
                                 param_vary_condition,
-                                torch.isclose(params[:, k], 0.4750)
+                                torch.isclose(params[:, k], self.base_value_to_vis)
                             )
                 param_indexes_to_vis = torch.where(param_vary_condition)[0]
 

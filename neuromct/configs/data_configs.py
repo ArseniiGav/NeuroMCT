@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 
 sources = ['Cs137', 'K40', 'Co60', 'AmBe', 'AmC']
@@ -25,7 +26,8 @@ data_configs = {
     "sources": sources,
     "sources_names_to_vis": sources_names_to_vis,   
     "sources_colors_to_vis": sources_colors_to_vis,
-    "params_values_to_vis": [0.0750, 0.3750, 0.6750, 0.9750],
+    "params_values_to_vis": torch.tensor([0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float64),
+    "base_value_to_vis": torch.tensor(0.4750, dtype=torch.float64),
 
     # data processing configs
     "training_grid_size": 21,
