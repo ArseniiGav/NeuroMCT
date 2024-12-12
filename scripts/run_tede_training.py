@@ -21,14 +21,14 @@ val_data_transformations = define_transformations("val")
 
 train_data = create_dataset("training", training_data_transformations)
 val1_data = create_dataset("val1", val_data_transformations)
-val2_1_data = create_dataset("val2_1", val_data_transformations)
-val2_2_data = create_dataset("val2_2", val_data_transformations)
-val2_3_data = create_dataset("val2_3", val_data_transformations)
+val2_1_data = create_dataset("val2_1", val_data_transformations, val2_rates=True)
+val2_2_data = create_dataset("val2_2", val_data_transformations, val2_rates=True)
+val2_3_data = create_dataset("val2_3", val_data_transformations, val2_rates=True)
 val2_data = ConcatDataset([val2_1_data, val2_2_data, val2_3_data])
 
 train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=20, pin_memory=True)
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
-val2_loader = DataLoader(val2_data, batch_size=args.batch_size, shuffle=False, pin_memory=True)
+val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
 loss_function = wasserstein_1d
 val_metric_function = wasserstein_1d
@@ -97,5 +97,4 @@ best_tede_model = TEDELightningTraining.load_from_checkpoint(
     lr=args.lr,
 )
 
-# Save the tede model
 torch.save(best_tede_model.model.state_dict(), f"{data_configs['path_to_models']}/tede_model.pth")
