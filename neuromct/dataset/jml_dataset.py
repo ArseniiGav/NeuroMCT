@@ -1,5 +1,7 @@
 import torch
 from torch.utils.data import Dataset
+from neuromct.configs import data_configs
+from .val2_data_rates_processing import get_val2_data_rates
 
 
 class JMLDataset(Dataset):
@@ -7,7 +9,8 @@ class JMLDataset(Dataset):
             self,
             dataset_type: str,
             path_to_processed_data: str,
-            transform=None
+            transform=None,
+            val2_rates=None
         ):
         """
         Args:
@@ -26,6 +29,12 @@ class JMLDataset(Dataset):
         self.params = torch.load(params_path, weights_only=True)
         self.source_types = torch.load(source_types_path, weights_only=True)
         self.transform = transform
+
+        if dataset_type in ["val2_1", "val2_2", "val2_3"]:
+            if val2_rates:
+                val2_data = (self.spectra, self.params, self.source_types)
+                val2_data_rates = get_val2_data_rates(val2_data)
+                self.spectra, self.params, self.source_types = val2_data_rates
 
         # Verify data consistency
         if len(self.spectra) != len(self.params) or len(self.spectra) != len(self.source_types):

@@ -15,7 +15,7 @@ def get_val2_data_rates(val2_data):
     params_reshaped = params.view(n_sources, val2_n_datasets, params_dim)
 
     # shape: (n_sources*n_datasets, 1) --> (n_sources, n_datasets, 1)
-    source_types_reshaped = source_types.view(n_sources, val2_n_datasets, n_bins)
+    source_types_reshaped = source_types.view(n_sources, val2_n_datasets, 1)
 
     spectra_rates = spectra_reshaped.mean(1) # shape: (n_sources, n_bins)
     params_values = params_reshaped[:, 0, :] # shape: (n_sources, params_dim)
