@@ -27,10 +27,8 @@ class ModelResultsVisualizator:
         self.params_dim = data_configs['params_dim']
 
         val1_data = self._load_val_data_to_vis(dataset_type="val1")
-        self.val1_data_to_vis = self._get_data_to_vis("val1", val1_data)
+        self.val1_data_to_vis, self.val1_params_to_vis_transformed = self._get_data_to_vis("val1", val1_data)
         self.val1_spectra_to_vis = self.val1_data_to_vis[0]
-        print(self.val1_data_to_vis[1])
-        self.val1_params_to_vis_transformed = self.scaler.inverse_transform(self.val1_data_to_vis[1])
 
         val2_1_data = self._load_val_data_to_vis(dataset_type="val2_1")
         val2_2_data = self._load_val_data_to_vis(dataset_type="val2_2")
@@ -56,6 +54,7 @@ class ModelResultsVisualizator:
             spectra_samples_to_vis = []
             params_samples_to_vis = []
             source_types_samples_to_vis = []
+            params_samples_to_vis_transformed = []
             for j in range(self.params_dim):
                 if self.n_params_values_to_vis > 1:
                     param_vary_condition = torch.logical_or(
@@ -90,8 +89,12 @@ class ModelResultsVisualizator:
                 spectra_samples_to_vis.append(spectra_sample_to_vis)
                 params_samples_to_vis.append(params_sample_to_vis)
                 source_types_samples_to_vis.append(source_types_sample_to_vis)
+
+                params_sample_to_vis_transformed = self.scaler.inverse_transform(params_sample_to_vis)
+                params_samples_to_vis_transformed.append(params_sample_to_vis_transformed)
             data_to_vis = (spectra_samples_to_vis, params_samples_to_vis, source_types_samples_to_vis)
-            return data_to_vis
+            return data_to_vis, params_samples_to_vis_transformed
+
         elif dataset_type == "val2":
             val2_data_rates = []
             for val2_x_data in data:

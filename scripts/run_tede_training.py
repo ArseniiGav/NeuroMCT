@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
 from neuromct.models.ml import TEDE, TEDELightningTraining
-from neuromct.models.ml.losses import CosineDistanceLoss
+from neuromct.models.ml.losses import WassersteinLoss
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse, create_dataset, define_transformations
 from neuromct.utils import ModelResultsVisualizator
@@ -10,7 +10,6 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning import Trainer
-from ot.lp import wasserstein_1d
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -30,8 +29,8 @@ train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
 val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
-loss_function = wasserstein_1d
-val_metric_function = wasserstein_1d
+loss_function = WassersteinLoss()
+val_metric_function = WassersteinLoss()
 
 optimizer = optim.Adam
 lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau

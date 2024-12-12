@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from lightning import LightningModule
-from neuromct.configs import data_configs
 
 
 class TEDELightningTraining(LightningModule):
@@ -16,7 +15,6 @@ class TEDELightningTraining(LightningModule):
              **kwargs,
         ):
         super(TEDELightningTraining, self).__init__()
-        self.kNPE_bins_edges = data_configs['kNPE_bins_edges']
 
         self.model = model
         self.loss_function = loss_function
@@ -36,37 +34,31 @@ class TEDELightningTraining(LightningModule):
             self.val1_params_to_vis = self.res_visualizator.val1_data_to_vis[1]
             self.val1_source_types_to_vis = self.res_visualizator.val1_data_to_vis[2]
 
-    def _compute_and_log_losses(self, spectra_predict, spectra, data_type):
-        loss = self.loss_function(
-            self.kNPE_bins_edges, self.kNPE_bins_edges,
-            spectra_predict, spectra
-        )
+    def _compute_and_log_losses(self, spectra_predict, spectra_true, data_type):
+        loss = self.loss_function(spectra_predict, spectra_true)
         self.log(f"{data_type}_loss", loss, prog_bar=True)
         return loss
 
-    def _compute_and_log_val_losses(self, spectra_predict, spectra, data_type):
-        loss = self.val_metric_function(
-            self.kNPE_bins_edges, self.kNPE_bins_edges,
-            spectra_predict, spectra
-        )
+    def _compute_and_log_val_losses(self, spectra_predict, spectra_true, data_type):
+        loss = self.val_metric_function(spectra_predict, spectra_true)
         self.log(f"{data_type}_loss", loss, prog_bar=True, on_epoch=True)
         return loss
 
     def training_step(self, batch):
-        spectra, params, source_types = batch
+        spectra_true, params, source_types = batch
         spectra_predict = self.model(params, source_types)
-        loss = self._compute_and_log_losses(spectra_predict, spectra, "training")
+        loss = self._compute_and_log_losses(spectra_predict, spectra_true, "training")
         self.train_loss_to_plot.append(loss.item())
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        spectra, params, source_types = batch
+        spectra_true, params, source_types = batch
         spectra_predict = self.model(params, source_types)
         if dataloader_idx == 0:
-            loss = self._compute_and_log_val_losses(spectra_predict, spectra, "val1")
+            loss = self._compute_and_log_val_losses(spectra_predict, spectra_true, "val1")
             self.val1_epoch_loss = loss.item()
         elif dataloader_idx == 1:
-            loss = self._compute_and_log_val_losses(spectra_predict, spectra, "val2")
+            loss = self._compute_and_log_val_losses(spectra_predict, spectra_true, "val2")
             self.val2_epoch_loss = loss.item()
         return loss
         

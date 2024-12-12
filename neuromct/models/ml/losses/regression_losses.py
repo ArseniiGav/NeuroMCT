@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from neuromct.configs import data_configs
+from ot.lp import wasserstein_1d
 
 
 class CosineDistanceLoss(nn.Module):
@@ -26,20 +28,34 @@ class GeneralizedPoissonNLLLoss(nn.Module):
         return output
 
 
-class DirichletNLLLoss(nn.Module):
-    def __init__(self):
-        super(DirichletNLLLoss, self).__init__()
-    
-    def forward(self, predicted_alpha, target_p):
-        predicted_alpha = torch.clamp(predicted_alpha, min=1e-6)
-        
-        alpha_sum = torch.sum(predicted_alpha, dim=1, keepdim=True)
-        
-        log_likelihood = (
-            torch.lgamma(alpha_sum) -  # log Gamma(sum(alpha_i))
-            torch.sum(torch.lgamma(predicted_alpha), dim=1) +  # sum(log Gamma(alpha_i))
-            torch.sum((predicted_alpha - 1) * torch.log(target_p), dim=1)  # sum((alpha_i - 1) * log(p_i))
-        )
-        
-        return -torch.mean(log_likelihood)
+class WassersteinLoss(nn.Module):
+    def __init__(self, hist_based=False):
+        super(WassersteinLoss, self).__init__()
+        self.hist_based = hist_based
+        if self.hist_based:
+            kNPE_bins_edges = torch.tensor(
+                data_configs["kNPE_bins_edges"], dtype=torch.float64)
+            self.kNPE_bins_centers = (kNPE_bins_edges[1:] + kNPE_bins_edges[:-1]) / 2
 
+    def forward(self, spectra_predict, spectra_true):
+        # Verify data consistency
+        if spectra_predict.shape[0] != spectra_true.shape[0]:
+            raise ValueError("Mismatch in the batch sizes between predicted and true spectra.")
+        elif spectra_predict.shape[1] != spectra_true.shape[1]:
+            raise ValueError("Mismatch in the binning sizes between predicted and true spectra.")
+
+        if self.hist_based:
+            batch_size = spectra_true.shape[0]
+            self.kNPE_bins_centers_repeated = self.kNPE_bins_centers.repeat((batch_size, 1)).T
+            loss = wasserstein_1d(
+                self.kNPE_bins_centers_repeated,
+                self.kNPE_bins_centers_repeated,
+                spectra_predict.T,
+                spectra_true.T
+            )
+        else:
+            loss = wasserstein_1d(
+                spectra_predict.T,
+                spectra_true.T
+            )
+        return torch.mean(loss)
