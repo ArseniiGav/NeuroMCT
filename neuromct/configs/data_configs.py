@@ -11,7 +11,7 @@ sources_names_to_vis = [
 ]
 sources_colors_to_vis = ['darkgreen', 'royalblue', 'firebrick', 'indigo', 'peru']
 bins = np.arange(0.0, 16.01, 0.02, dtype=np.float64)
-n_bins = bins.shape[0]
+n_bins = bins.shape[0] - 1
 
 data_configs = {
     # paths' configs
