@@ -58,20 +58,28 @@ class ModelResultsVisualizator:
             for j in range(self.params_dim):
                 if self.n_params_values_to_vis > 1:
                     param_vary_condition = torch.logical_or(
-                        (params[:, j] == self.params_values_to_vis[0]), (params[:, j] == self.params_values_to_vis[1]))
+                        torch.isclose(params[:, j], self.params_values_to_vis[0]),
+                        torch.isclose(params[:, j], self.params_values_to_vis[1])
+                    )
                     for i in range(2, len(self.params_values_to_vis)):
                         param_vary_condition = torch.logical_or(
-                            param_vary_condition, (params[:, j] == self.params_values_to_vis[i]))
+                            param_vary_condition,
+                            torch.isclose(params[:, j], self.params_values_to_vis[i])
+                        )
                     for k in range(self.params_dim):
                         if k != j:
                             param_vary_condition = torch.logical_and(
-                                param_vary_condition, (params[:, k] == 0.4750))
+                                param_vary_condition,
+                                torch.isclose(params[:, k], 0.4750)
+                            )
                 else:
-                    param_vary_condition = params[:, j] == self.params_values_to_vis[0]
+                    param_vary_condition = torch.isclose(params[:, j], self.params_values_to_vis[0])
                     for k in range(self.params_dim):
                         if k != j:
                             param_vary_condition = torch.logical_and(
-                                param_vary_condition, (params[:, k] == 0.4750))
+                                param_vary_condition,
+                                torch.isclose(params[:, k], 0.4750)
+                            )
                 param_indexes_to_vis = torch.where(param_vary_condition)[0]
 
                 spectra_sample_to_vis = spectra[param_indexes_to_vis]
