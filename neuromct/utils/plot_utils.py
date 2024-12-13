@@ -27,8 +27,25 @@ class ModelResultsVisualizator:
         self.params_dim = data_configs['params_dim']
 
         val1_data = self._load_val_data_to_vis(dataset_type="val1")
-        self.val1_data_to_vis, self.val1_params_to_vis_transformed = self._get_data_to_vis("val1", val1_data)
+        self.val1_data_to_vis, self.val1_params_to_vis_transformed = self._get_data_to_vis(
+            "val1", val1_data)
         self.val1_spectra_to_vis = self.val1_data_to_vis[0]
+
+        self.kB_val2_values = data_configs['kB_val2_values']
+        self.fC_val2_values = data_configs['fC_val2_values']
+        self.LY_val2_values = data_configs['LY_val2_values']
+
+        self.val2_values = numpy.array(
+            [self.kB_val2_values, self.fC_val2_values, self.LY_val2_values],
+            dtype=numpy.float64).T
+        self.val2_params_to_vis = numpy.repeat(
+            self.val2_values, self.n_sources, axis=0)
+        self.val2_params_to_vis = torch.tensor(
+            self.scaler.transform(self.val2_params_to_vis),
+            dtype=torch.float64)
+        self.val2_source_types_to_vis = torch.arange(
+            self.n_sources, dtype=torch.int64
+        ).unsqueeze(1).repeat(self.params_dim, 1)
 
         val2_1_data = self._load_val_data_to_vis(dataset_type="val2_1")
         val2_2_data = self._load_val_data_to_vis(dataset_type="val2_2")
@@ -42,6 +59,7 @@ class ModelResultsVisualizator:
         source_types_path = f"{self.path_to_processed_data}/{dataset_type.split('_')[0]}/{dataset_type}_source_types.pt"
 
         spectra = torch.load(spectra_path, weights_only=True)
+        spectra = spectra / spectra.sum(1)[:, None]
         params = torch.load(params_path, weights_only=True)
         source_types = torch.load(source_types_path, weights_only=True)
         data = (spectra, params, source_types)
@@ -99,10 +117,10 @@ class ModelResultsVisualizator:
             val2_data_rates = []
             for val2_x_data in data:
                 val2_x_data_rates = get_val2_data_rates(val2_x_data)
-                val2_data_rates.append(val2_x_data_rates)
+                val2_data_rates.append(val2_x_data_rates[0])
             return val2_data_rates
     
-    def _get_subplot_title(params_transformed):
+    def _get_subplot_title(self, params_transformed):
         kB, fC, Y = params_transformed
         title = r"$k_{B}$"+f": {kB:.2f} [g/cm2/GeV], "
         title = title + r"$f_{C}$"+f": {fC:.3f}, "
@@ -112,13 +130,13 @@ class ModelResultsVisualizator:
     def _get_suptitle(self, current_epoch, global_step, val_metric, val_data_type):
         suptitle = f"Validation dataset №{val_data_type}. Epoch: {current_epoch}, "
         suptitle = suptitle + f"Iteration: {global_step // self.n_sources}, "
-        suptitle = suptitle + r"$W^{\rm{V_%s}}_{\rm{1}}$ " %val_data_type
+        suptitle = suptitle + r"$W^{V_%s}_{1}$ " %val_data_type
         suptitle = suptitle + f"= {val_metric:.5f}"
         return suptitle
 
     def plot_val1_spectra(
             self,
-            spectra_pdf_to_vis: numpy.ndarray,
+            spectra_pdf_to_vis: list,
             current_epoch: int,
             global_step: int,
             val1_metric: float,
@@ -128,12 +146,12 @@ class ModelResultsVisualizator:
                                figsize=(self.params_dim*6, self.n_params_values_to_vis*3))
         ax = ax.flatten()
         for m in range(self.params_dim):
-            for i in range(self.n_params_values_to_vis):
+            for i in range(self.n_params_values_to_vis * self.n_sources):
                 j = i % self.n_params_values_to_vis + m * self.n_params_values_to_vis
                 k = i // self.n_params_values_to_vis
 
                 current_params_transformed = self.val1_params_to_vis_transformed[m][i]
-                subplot_title = self._get_subplot_title(current_params_transformed[m][i])
+                subplot_title = self._get_subplot_title(current_params_transformed)
 
                 ########### plot truth ###########
                 ax[j].stairs(
@@ -156,8 +174,8 @@ class ModelResultsVisualizator:
                     ax[j].plot([0], [0], color='black', linestyle='--', linewidth=1.5, label="TEDE")
                     
                     handles, labels = ax[j].get_legend_handles_labels()                
-                    legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=11, loc="upper right",)
-                    legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=11, loc=(0.47, 0.81))
+                    legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=10, loc="upper right",)
+                    legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=10, loc=(0.32, 0.82))
                     ax[j].add_artist(legend1)
                     ax[j].add_artist(legend2)
 
@@ -169,9 +187,9 @@ class ModelResultsVisualizator:
                 if j >= self.n_params_values_to_vis * (self.params_dim - 1):
                     ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$")
                 if j % self.n_params_values_to_vis == 0:
-                    ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} \ | \ k_{B}, f_{C}, L_{y})$")
+                    ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$")
         
-        suptitle = self._get_subplot_title(current_epoch, global_step, val1_metric, val_data_type=1)
+        suptitle = self._get_suptitle(current_epoch, global_step, val1_metric, val_data_type=1)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.png')
@@ -193,12 +211,13 @@ class ModelResultsVisualizator:
             j = i // self.n_sources
             k = i % self.n_sources
 
-            current_params_transformed = self.val1_params_to_vis_transformed[j][k]
-            subplot_title = self._get_subplot_title(current_params_transformed[j][k])
+            subplot_title = self._get_subplot_title(
+                (self.kB_val2_values[j], self.fC_val2_values[j], self.LY_val2_values[j])
+            )
 
             ########### plot truth ###########
             ax[j].stairs(
-                self.val2_spectra_to_vis[j][k], self.kNPE_bins_edges,
+                self.val2_data_rates_to_vis[j][k], self.kNPE_bins_edges,
                 label=self.sources_names_to_vis[k],
                 color=self.sources_colors_to_vis[k],
                 linewidth=1.25,
@@ -207,7 +226,7 @@ class ModelResultsVisualizator:
 
             ########### plot predicted ###########
             ax[j].stairs(
-                spectra_pdf_to_vis[j][k], self.kNPE_bins_edges,
+                spectra_pdf_to_vis[i], self.kNPE_bins_edges,
                 color=self.sources_colors_to_vis[k],
                 linestyle='--',
                 linewidth=1.25,
@@ -219,20 +238,20 @@ class ModelResultsVisualizator:
                 ax[j].plot([0], [0], color='black', linestyle='--', linewidth=2, label="TEDE")
                 
                 handles, labels = ax[j].get_legend_handles_labels()                
-                legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=12, loc="upper right",)
-                legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=12, loc=(0.52, 0.81))
+                legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=14, loc="upper right",)
+                legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=14, loc=(0.31, 0.82))
                 ax[j].add_artist(legend1)
                 ax[j].add_artist(legend2)
             
-            ax[j].set_title(subplot_title, fontsize=13)
+            ax[j].set_title(subplot_title, fontsize=14)
             ax[j].set_ylim(1e-4, 0.25)
             ax[j].set_xlim(0.0, 16.0)
             ax[j].set_yscale("log")
-            ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$")
+            ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
             if j == 0:
-                ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} \ | \ k_{B}, f_{C}, Y)$")
+                ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$", fontsize=18)
 
-        suptitle = self._get_subplot_title(current_epoch, global_step, val2_metric, val_data_type=2)
+        suptitle = self._get_suptitle(current_epoch, global_step, val2_metric, val_data_type=2)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.png')
