@@ -5,10 +5,10 @@ import torch
 sources = ['Cs137', 'K40', 'Co60', 'AmBe', 'AmC']
 sources_names_to_vis = [
     r'$\rm {}^{137} Cs$',
-    r'$\rm {}^{40} K$', 
-    r'$\rm {}^{60} Co$', 
-    r'$\rm {}^{241}Am \text{-} Be$'
-    r'$\rm {}^{241}Am \text{-} {}^{13}C $'
+    r'$\rm {}^{40} K$',
+    r'$\rm {}^{60} Co$',
+    r'$\rm {}^{241}Am \mathrm{-} Be$',
+    r'$\rm {}^{241}Am \mathrm{-} {}^{13}C$'
 ]
 sources_colors_to_vis = ['darkgreen', 'royalblue', 'firebrick', 'indigo', 'peru']
 bins = np.arange(0.0, 16.01, 0.02, dtype=np.float64)
