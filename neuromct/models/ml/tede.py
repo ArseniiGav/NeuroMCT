@@ -15,7 +15,11 @@ class TEDE(nn.Module):
         ):
         super(TEDE, self).__init__()
 
-        self.param_emb_layer = nn.Linear(param_dim, d_model // 2)
+        self.param_emb_layer = nn.Sequential(
+            nn.Linear(param_dim, d_model // 4),
+            nn.ReLU(),
+            nn.Linear(d_model // 4, d_model // 2)
+        )
         self.source_type_emb_layer = nn.Embedding(n_sources, d_model // 2)
         self.encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -30,11 +34,10 @@ class TEDE(nn.Module):
         )
         
         self.regression_head = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.GELU(),
             nn.Linear(d_model, output_dim),
             nn.Softplus()
         )
+        
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -47,9 +50,10 @@ class TEDE(nn.Module):
 
     def forward(self, params, source_types):
         param_emb = self.param_emb_layer(params)
-        source_type_emb = self.source_type_emb_layer(source_types).squeeze(dim=1) # collapse the label dim
+        source_type_emb = self.source_type_emb_layer(
+            source_types).squeeze(dim=1) # collapse the label dim
         x = torch.cat((param_emb, source_type_emb), dim=1)
         x = self.transformer_encoder(x)
         output = self.regression_head(x)
-        spectra_pdf = output / output.sum(1)[:, None]
-        return spectra_pdf
+        output = output / output.sum(1)[:, None]
+        return output
