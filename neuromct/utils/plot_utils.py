@@ -139,7 +139,7 @@ class ModelResultsVisualizator:
             spectra_pdf_to_vis: list,
             current_epoch: int,
             global_step: int,
-            val1_metric: float,
+            val1_loss: float,
         ) -> None: 
 
         fig, ax = plt.subplots(self.params_dim, self.n_params_values_to_vis,
@@ -189,11 +189,11 @@ class ModelResultsVisualizator:
                 if j % self.n_params_values_to_vis == 0:
                     ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$")
         
-        suptitle = self._get_suptitle(current_epoch, global_step, val1_metric, val_data_type=1)
+        suptitle = self._get_suptitle(current_epoch, global_step, val1_loss, val_data_type=1)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v1.png')
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v1.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v1.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v1.pdf')
         plt.close(fig)
 
     def plot_val2_spectra(
@@ -201,7 +201,7 @@ class ModelResultsVisualizator:
             spectra_pdf_to_vis: numpy.ndarray,
             current_epoch: int,
             global_step: int,
-            val2_metric: float,
+            val2_loss: float,
         ) -> None:
               
         fig, axes = plt.subplots(2, self.params_dim, 
@@ -259,8 +259,9 @@ class ModelResultsVisualizator:
                     ax_main.add_artist(legend2)
 
             ax_diff.set_xlim(0.0, 16.0)
-            ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
-            ax_diff.set_ylim(-1.25, 3)
+            ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
+            ax_diff.set_ylim(-1.25, 3.25)
+            ax_diff.set_yticks([-1, 0, 1, 2, 3])
             # ax_diff.set_yscale("symlog")
             if j == 0:
                 ax_diff.set_ylabel(
@@ -285,58 +286,76 @@ class ModelResultsVisualizator:
         for j in range(self.params_dim):
             axes[0, j].sharex(axes[1, j])
 
-        suptitle = self._get_suptitle(current_epoch, global_step, val2_metric, val_data_type=2)
+        suptitle = self._get_suptitle(current_epoch, global_step, val2_loss, val_data_type=2)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v2.png')
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v2.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.pdf')
         plt.close(fig)
 
-    # def plot_val_metrics(self, save=False):
-    #     self.val1_loss_to_plot.append(self.val1_epoch_loss)
-    #     self.val2_loss_to_plot.append(self.val2_epoch_loss)
-    #     self.val_loss_to_plot.append(self.val_epoch_loss)
+    def plot_training_process(
+            self,
+            val1_loss_to_plot: list,
+            val2_loss_to_plot: list,
+            val_loss_to_plot: list,
+            train_loss_to_plot: list,
+            train_loss: float,
+            val1_loss: float,
+            val2_loss: float,
+            val_loss: float,
+            global_step: int,
+            current_epoch: int
+        ) -> None:
 
-    #     title = r'$\rm D^{C}_{V_1} = $' + f"{self.val1_epoch_loss:.5f}, "
-    #     title += r'$\rm D^{C}_{V_2} = $' + f"{self.val2_epoch_loss:.5f}; "
-    #     title += r'$\rm D^{C}_{V} = \rm \frac{D^{C}_{V_1} + 4 \cdot \rm D^{C}_{V_2}}{5}$' + f' = {self.val_epoch_loss:.5f}'
+        title = r'$\rm W^{T}_{1} = $' + f"{train_loss:.5f}, "
+        title += r'$\rm W^{V_1}_{1} = $' + f"{val1_loss:.5f}, "
+        title += r'$\rm W^{V_2}_{1} = $' + f"{val2_loss:.5f}, "
+        title += r'$\rm W^{V}_{1} = \rm \frac{W^{V_1}_{1} + 4 \cdot \rm W^{V_2}_{}}{5}$' + f' = {val_loss:.5f}'
 
-    #     fig, ax = plt.subplots(1, 1, figsize=(16, 5))
-    #     ax.plot(range(len(self.val1_loss_to_plot)), self.val1_loss_to_plot, label="Validation dataset №1: " + r'$\rm D^{C}_{V_1}$', color='royalblue', linewidth=1.25)
-    #     ax.plot(range(len(self.val2_loss_to_plot)), self.val2_loss_to_plot, label="Validation dataset №2: " + r'$\rm D^{C}_{V_2}$', color='darkred', linewidth=1.25)
-    #     ax.plot(range(len(self.val_loss_to_plot)), self.val_loss_to_plot, label="Validation datasets combined: " + r'$\rm D^{C}_{V}$', color='darkgreen', linewidth=1.25)
+        fig, ax = plt.subplots(1, 1, figsize=(16, 5))
+        ax.plot(
+            numpy.arange(len(val1_loss_to_plot)-1),
+            val1_loss_to_plot[1:], 
+            label="Validation dataset №1: " + r'$\rm D^{C}_{V_1}$', 
+            color='royalblue',
+            alpha=0.9,  
+            linewidth=1.25
+        )
+        ax.plot(
+            numpy.arange(len(val2_loss_to_plot)-1),
+            val2_loss_to_plot[1:], 
+            label="Validation dataset №2: " + r'$\rm D^{C}_{V_2}$', 
+            color='darkred', 
+            alpha=0.9,
+            linewidth=1.25
+        )
+        ax.plot(
+            numpy.arange(len(val_loss_to_plot)-1),
+            val_loss_to_plot[1:], 
+            label="Validation datasets combined: " + r'$\rm D^{C}_{V}$', 
+            color='darkgreen', 
+            alpha=0.9,
+            linewidth=1.25
+        )
+        ax.plot(
+            numpy.arange(len(train_loss_to_plot)-1),
+            train_loss_to_plot[1:], 
+            label="Training data: " + r'$\rm D^{C}_{T}$', 
+            color='black',
+            alpha=0.9, 
+            linewidth=1.25
+        )
 
-    #     ax.set_ylabel("Cosine distance", fontsize=16)
-    #     ax.set_yscale("log")
-    #     ax.set_ylim(1e-4, 1.1)
-    #     ax.set_xlabel('Epochs', fontsize=16)
-    #     ax.legend(loc="upper right", fontsize=16)
-    #     ax.tick_params(axis='x', labelsize=14)
-    #     ax.tick_params(axis='y', labelsize=14)
-    #     # ax.set_axes(fontsize=14)
+        ax.set_ylabel("Loss", fontsize=16)
+        ax.set_yscale("log")
+        ax.set_ylim(1e-4, 1.1)
+        ax.set_xlabel('Iteration', fontsize=16)
+        ax.legend(loc="upper right", fontsize=16)
+        ax.tick_params(axis='x', labelsize=14)
+        ax.tick_params(axis='y', labelsize=14)
 
-    #     fig.suptitle(title, x=0.25, y=0.99, fontsize=20)
-    #     fig.tight_layout()
-    #     if save:
-    #         fig.savefig(f'plots/Transformer_training_process/epoch_{self.current_epoch}_val_metrics.png') 
-    #     plt.show()
-
-    # def plot_train_loss(self, save=False):
-
-    #     fig, ax = plt.subplots(1, 1, figsize=(16, 5))
-    #     ax.plot(range(len(self.train_loss_to_plot)), self.train_loss_to_plot, label="Training data: " + r'$\rm D^{C}_{T}$', color='black', linewidth=1.25)
-
-    #     ax.set_ylabel("Cosine distance", fontsize=16)
-    #     ax.set_yscale("log")
-    #     ax.set_ylim(1e-4, 1.1)
-    #     ax.set_xlabel('Training steps', fontsize=16)
-    #     ax.legend(loc="upper right", fontsize=16)
-    #     ax.tick_params(axis='x', labelsize=14)
-    #     ax.tick_params(axis='y', labelsize=14)
-    #     # ax.set_axes(fontsize=14)
-
-    #     fig.suptitle("Training dataset", x=0.1, y=0.99, fontsize=20)
-    #     fig.tight_layout()
-    #     if save:
-    #         fig.savefig(f'plots/Transformer_training_process/epoch_{self.current_epoch}_train_loss.png') 
-    #     plt.show()
+        fig.suptitle(title, x=0.25, y=0.99, fontsize=20)
+        fig.tight_layout()
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.png') 
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.pdf') 
+        plt.show()
