@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import Dataset
-from neuromct.configs import data_configs
 from .val2_data_rates_processing import get_val2_data_rates
 
 
