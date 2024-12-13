@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
 from neuromct.models.ml import TEDE, TEDELightningTraining
-from neuromct.models.ml.losses import WassersteinLoss
+from neuromct.models.ml.losses import WassersteinLoss, CosineDistanceLoss
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse, create_dataset, define_transformations
 from neuromct.utils import ModelResultsVisualizator
@@ -29,8 +29,8 @@ train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
 val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
-loss_function = WassersteinLoss()
-val_metric_function = WassersteinLoss()
+loss_function = CosineDistanceLoss() #WassersteinLoss(hist_based=True)
+val_metric_function = CosineDistanceLoss() #WassersteinLoss(hist_based=True)
 
 optimizer = optim.Adam
 lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
@@ -51,7 +51,7 @@ tede_model = TEDE(
     num_encoder_layers=args.num_encoder_layers,
     dim_feedforward=args.dim_feedforward,
     dropout=args.dropout,
-).double().to(device)
+)
 
 tede_model_lightning_training = TEDELightningTraining(
     model=tede_model,
@@ -67,7 +67,8 @@ trainer_tede = Trainer(
     max_epochs=1000,
     deterministic=True,
     accelerator="gpu",
-    devices=[0],
+    devices="auto",
+    precision=64,
     callbacks=[
         checkpoint_callback,
         early_stopping_callback,
