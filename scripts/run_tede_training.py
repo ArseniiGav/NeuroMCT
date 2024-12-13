@@ -29,10 +29,10 @@ train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
 val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
-loss_function = CosineDistanceLoss() #WassersteinLoss(hist_based=True)
-val_metric_function = CosineDistanceLoss() #WassersteinLoss(hist_based=True)
+loss_function = CosineDistanceLoss() # CosineDistanceLoss
+val_metric_function = CosineDistanceLoss() # CosineDistanceLoss
 
-optimizer = optim.Adam
+optimizer = optim.AdamW
 lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
 
 monitor_metric_es = "val_loss"
@@ -65,7 +65,8 @@ tede_model_lightning_training = TEDELightningTraining(
 
 trainer_tede = Trainer(
     max_epochs=1000,
-    deterministic=True,
+    val_check_interval=1,
+    deterministic=False,
     accelerator="gpu",
     devices="auto",
     precision=64,
