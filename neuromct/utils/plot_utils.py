@@ -192,8 +192,8 @@ class ModelResultsVisualizator:
         suptitle = self._get_suptitle(current_epoch, global_step, val1_metric, val_data_type=1)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.png')
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v1.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v1.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v1.pdf')
         plt.close(fig)
 
     def plot_val2_spectra(
@@ -204,58 +204,92 @@ class ModelResultsVisualizator:
             val2_metric: float,
         ) -> None:
               
-        fig, ax = plt.subplots(1, self.params_dim, 
-                               figsize=(self.params_dim*6, self.params_dim*2))
-        ax = ax.flatten()
-        for i in range(self.params_dim * self.n_sources):
-            j = i // self.n_sources
-            k = i % self.n_sources
+        fig, axes = plt.subplots(2, self.params_dim, 
+                                 figsize=(self.params_dim * 6, self.params_dim * 2.5),
+                                 gridspec_kw={'height_ratios': [2, 1], 'hspace': 0.1})
+        axes = axes.reshape(2, self.params_dim)
+        for j in range(self.params_dim):
+            ax_main = axes[0, j]
+            ax_diff = axes[1, j]
+
+            for k in range(self.n_sources):
+                i = j * self.n_sources + k
+
+                truth = self.val2_data_rates_to_vis[j][k]
+                predicted = spectra_pdf_to_vis[i]
+
+                ########### plot truth ###########
+                ax_main.stairs(
+                    truth,
+                    self.kNPE_bins_edges,
+                    label=self.sources_names_to_vis[k],
+                    color=self.sources_colors_to_vis[k],
+                    linewidth=1.25,
+                    alpha=0.6
+                )
+
+                ########### plot predicted ###########
+                ax_main.stairs(
+                    predicted,
+                    self.kNPE_bins_edges,
+                    color=self.sources_colors_to_vis[k],
+                    linestyle='--',
+                    linewidth=1.25,
+                    alpha=1.0
+                ) 
+
+                ########### plot relative difference ###########
+                ax_diff.stairs(
+                    (predicted - truth) / truth,
+                    self.kNPE_bins_edges,
+                    label=self.sources_names_to_vis[k], 
+                    color=self.sources_colors_to_vis[k],
+                    linewidth=1.25,
+                    alpha=1.0
+                )
+
+                if k == 4:
+                    ax_main.plot([0], [0], color='black', linewidth=2, label="JUNOSW")
+                    ax_main.plot([0], [0], color='black', linestyle='--', linewidth=2, label="TEDE")
+                    
+                    handles, labels = ax_main.get_legend_handles_labels()                
+                    legend1 = ax_main.legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=12, loc="upper right",)
+                    legend2 = ax_main.legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=12, loc=(0.27, 0.83))
+                    ax_main.add_artist(legend1)
+                    ax_main.add_artist(legend2)
+
+            ax_diff.set_xlim(0.0, 16.0)
+            ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
+            ax_diff.set_ylim(-1.25, 3)
+            # ax_diff.set_yscale("symlog")
+            if j == 0:
+                ax_diff.set_ylabel(
+                    r"$\frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{JUNOSW}}}$",
+                    fontsize=17
+                )
+
+            ax_main.set_ylim(1e-5, 0.4)
+            ax_main.set_xlim(0.0, 16.0)
+            ax_main.tick_params(labelbottom=False)
+            ax_main.set_yscale("log")
+            if j == 0:
+                ax_main.set_ylabel(
+                    "Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$",
+                    fontsize=16
+                )
 
             subplot_title = self._get_subplot_title(
-                (self.kB_val2_values[j], self.fC_val2_values[j], self.LY_val2_values[j])
-            )
+                (self.kB_val2_values[j], self.fC_val2_values[j], self.LY_val2_values[j]))
+            ax_main.set_title(subplot_title, fontsize=13)
 
-            ########### plot truth ###########
-            ax[j].stairs(
-                self.val2_data_rates_to_vis[j][k], self.kNPE_bins_edges,
-                label=self.sources_names_to_vis[k],
-                color=self.sources_colors_to_vis[k],
-                linewidth=1.25,
-                alpha=0.6
-            )
-
-            ########### plot predicted ###########
-            ax[j].stairs(
-                spectra_pdf_to_vis[i], self.kNPE_bins_edges,
-                color=self.sources_colors_to_vis[k],
-                linestyle='--',
-                linewidth=1.25,
-                alpha=1.0
-            )
-            
-            if k == 4:
-                ax[j].plot([0], [0], color='black', linewidth=2, label="JUNOSW")
-                ax[j].plot([0], [0], color='black', linestyle='--', linewidth=2, label="TEDE")
-                
-                handles, labels = ax[j].get_legend_handles_labels()                
-                legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=14, loc="upper right",)
-                legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=14, loc=(0.31, 0.82))
-                ax[j].add_artist(legend1)
-                ax[j].add_artist(legend2)
-            
-            ax[j].set_title(subplot_title, fontsize=14)
-            ax[j].set_ylim(1e-4, 0.25)
-            ax[j].set_xlim(0.0, 16.0)
-            ax[j].set_yscale("log")
-            ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
-            if j == 0:
-                ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$", fontsize=18)
+        for j in range(self.params_dim):
+            axes[0, j].sharex(axes[1, j])
 
         suptitle = self._get_suptitle(current_epoch, global_step, val2_metric, val_data_type=2)
         fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
         fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.png')
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_{global_step // self.n_sources}_v2.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v2.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step // self.n_sources}_v2.pdf')
         plt.close(fig)
 
     # def plot_val_metrics(self, save=False):
