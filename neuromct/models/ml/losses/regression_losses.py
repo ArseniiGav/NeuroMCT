@@ -44,23 +44,27 @@ class WassersteinLoss(nn.Module):
         elif spectra_predict.shape[1] != spectra_true.shape[1]:
             raise ValueError("Mismatch in the binning sizes between predicted and true spectra.")
 
+        original_deterministic_setting = torch.are_deterministic_algorithms_enabled()
         if self.hist_based:
             batch_size = spectra_true.shape[0]
             self.kNPE_bins_centers_repeated = self.kNPE_bins_centers.repeat((batch_size, 1)).T
 
             #torch.cumsum used in wasserstein_1d from POT does not have a deterministic implementation            
-            with torch.use_deterministic_algorithms(False):
-                loss = wasserstein_1d(
-                    self.kNPE_bins_centers_repeated,
-                    self.kNPE_bins_centers_repeated,
-                    spectra_predict.T,
-                    spectra_true.T
-                )
+            torch.use_deterministic_algorithms(False)
+            loss = wasserstein_1d(
+                self.kNPE_bins_centers_repeated.to(spectra_predict.device),
+                self.kNPE_bins_centers_repeated.to(spectra_predict.device),
+                spectra_predict.T,
+                spectra_true.T
+            )
+            torch.use_deterministic_algorithms(original_deterministic_setting)
+            return torch.mean(loss)
         else:
-            #torch.cumsum used in wasserstein_1d from POT does not have a deterministic implementation            
-            with torch.use_deterministic_algorithms(False):
-                loss = wasserstein_1d(
-                    spectra_predict.T,
-                    spectra_true.T
-                )
-        return torch.mean(loss)
+            #torch.cumsum used in wasserstein_1d from POT does not have a deterministic implementation
+            torch.use_deterministic_algorithms(False)
+            loss = wasserstein_1d(
+                spectra_predict.T,
+                spectra_true.T
+            )
+            torch.use_deterministic_algorithms(original_deterministic_setting)
+            return torch.mean(loss)
