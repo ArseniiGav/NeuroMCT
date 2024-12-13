@@ -73,13 +73,13 @@ class TEDELightningTraining(LightningModule):
                 val1_spectra_pdf_to_vis = self(
                     self.val1_params_to_vis[i].to(self.device),
                     self.val1_source_types_to_vis[i].to(self.device)
-                ).detach().cpu().numpy()
+                ).detach().cpu()
                 val1_spectra_pdfs_to_vis.append(val1_spectra_pdf_to_vis)
 
             val2_spectra_pdfs_to_vis = self(
                 self.val2_params_to_vis.to(self.device),
                 self.val2_source_types_to_vis.to(self.device)
-            ).detach().cpu().numpy()
+            ).detach().cpu()
         self.train()
 
         self.res_visualizator.plot_val1_spectra(
