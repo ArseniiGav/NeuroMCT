@@ -1,7 +1,5 @@
-from neuromct.configs import data_configs
-from neuromct.dataset import PoissonNoise
-from neuromct.dataset import NormalizeToUnity
-from neuromct.dataset import JMLDataset
+from ..configs import data_configs
+from ..dataset import PoissonNoise, NormalizeToUnity, JMLDataset
 from torchvision import transforms
 
 

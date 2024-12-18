@@ -1,4 +1,4 @@
-from neuromct.configs import data_configs
+from ..configs import data_configs
 
 
 def get_val2_data_rates(val2_data):
