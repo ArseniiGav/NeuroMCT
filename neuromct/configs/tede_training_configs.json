@@ -1,10 +1,11 @@
 {
-    "batch_size": 64,
-    "lr": 1e-4,
+    "n_data_aug": 200,
+    "batch_size": 2048,
+    "lr": 1e-3,
     "output_dim": 800,
-    "d_model": 128,
-    "nhead": 8,
-    "num_encoder_layers": 5,
+    "d_model": 100,
+    "nhead": 5,
+    "num_encoder_layers": 4,
     "dim_feedforward": 128,
     "dropout": 0.1
 }
