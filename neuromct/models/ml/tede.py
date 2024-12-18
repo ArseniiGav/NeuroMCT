@@ -15,29 +15,44 @@ class TEDE(nn.Module):
         ):
         super(TEDE, self).__init__()
 
-        self.param_emb_layer = nn.Sequential(
-            nn.Linear(param_dim, d_model // 4),
-            nn.ReLU(),
-            nn.Linear(d_model // 4, d_model // 2)
+        self.param_emb_embedding = nn.Sequential(
+            nn.Linear(1, d_model // 4),
+            nn.LayerNorm(d_model // 4),
+            nn.GELU(),
+            nn.Linear(d_model // 4, d_model // 2),
+            nn.LayerNorm(d_model // 2),
+            nn.GELU(),
+            nn.Linear(d_model // 2, d_model),
+            nn.LayerNorm(d_model),
+            nn.GELU()
         )
-        self.source_type_emb_layer = nn.Embedding(n_sources, d_model // 2)
+
+        self.source_type_embedding = nn.Embedding(
+            n_sources, d_model
+        )
+
         self.encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
+            activation="gelu"
         )
+
         self.transformer_encoder = nn.TransformerEncoder(
             self.encoder_layer,
             num_layers=num_encoder_layers
         )
         
         self.regression_head = nn.Sequential(
-            nn.Linear(d_model, output_dim),
-            nn.Softplus()
+            nn.Flatten(),
+            nn.Linear(d_model * 4, output_dim // 2),
+            nn.LayerNorm(output_dim // 2),
+            nn.GELU(),
+            nn.Linear(output_dim // 2, output_dim),
+            nn.Softmax(dim=1)
         )
-        
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -49,11 +64,10 @@ class TEDE(nn.Module):
             nn.init.orthogonal_(module.weight)
 
     def forward(self, params, source_types):
-        param_emb = self.param_emb_layer(params)
-        source_type_emb = self.source_type_emb_layer(
-            source_types).squeeze(dim=1) # collapse the label dim
-        x = torch.cat((param_emb, source_type_emb), dim=1)
-        x = self.transformer_encoder(x)
-        output = self.regression_head(x)
-        output = output / output.sum(1)[:, None]
-        return output
+        params = params.unsqueeze(2) # [B, param_dim] -> [B, param_dim, 1]
+        param_emb = self.param_emb_embedding(params) # [B, param_dim, 1] -> [B, param_dim, d_model]
+        source_type_emb = self.source_type_embedding(source_types) #  [B, 1] -> [B, 1, d_model]
+        x = torch.cat((param_emb, source_type_emb), dim=1) # [B, param_dim+1, d_model]
+        x = self.transformer_encoder(x) # [B, param_dim+1, d_model]
+        spectra_pdf = self.regression_head(x) # [B, output_dim]
+        return spectra_pdf
