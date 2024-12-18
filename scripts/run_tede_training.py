@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
 from neuromct.models.ml import TEDE, TEDELightningTraining
-from neuromct.models.ml.losses import WassersteinLoss, CosineDistanceLoss
+from neuromct.models.ml.losses import CosineDistanceLoss
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse, create_dataset, define_transformations
 from neuromct.utils import ModelResultsVisualizator
@@ -15,10 +15,12 @@ from lightning import Trainer
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 args = tede_argparse()
 
-training_data_transformations = define_transformations("training")
-val_data_transformations = define_transformations("val")
+training_data_transformations = define_transformations("training") # poisson noise + normalization
+val_data_transformations = define_transformations("val") # normalization only
 
-train_data = create_dataset("training", training_data_transformations)
+train_data_initial = create_dataset("training", training_data_transformations)
+train_data = ConcatDataset([train_data_initial] * args.n_data_aug)
+
 val1_data = create_dataset("val1", val_data_transformations)
 val2_1_data = create_dataset("val2_1", val_data_transformations, val2_rates=True)
 val2_2_data = create_dataset("val2_2", val_data_transformations, val2_rates=True)
@@ -29,8 +31,8 @@ train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
 val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
-loss_function = CosineDistanceLoss() # CosineDistanceLoss
-val_metric_function = CosineDistanceLoss() # CosineDistanceLoss
+loss_function = CosineDistanceLoss()
+val_metric_function = CosineDistanceLoss()
 
 optimizer = optim.AdamW
 lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
@@ -65,8 +67,7 @@ tede_model_lightning_training = TEDELightningTraining(
 
 trainer_tede = Trainer(
     max_epochs=1000,
-    val_check_interval=1,
-    deterministic=False,
+    deterministic=True,
     accelerator="gpu",
     devices="auto",
     precision=64,
@@ -96,6 +97,7 @@ best_tede_model = TEDELightningTraining.load_from_checkpoint(
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
     lr=args.lr,
+    res_visualizator=model_res_visualizator,
 )
 
 torch.save(best_tede_model.model.state_dict(), f"{data_configs['path_to_models']}/tede_model.pth")
