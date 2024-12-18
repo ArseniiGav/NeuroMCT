@@ -1,10 +1,13 @@
 import argparse
 import json
+import pkg_resources
 
 
 def tede_argparse():
+    configs_path = pkg_resources.resource_filename("neuromct", "configs/")
+
     parser = argparse.ArgumentParser(description='Train the TEDE model')
-    parser.add_argument("--config", type=str, default='neuromct/configs/tede_training_configs.json',
+    parser.add_argument("--config", type=str, default=f'{configs_path}/tede_training_configs.json',
                          help="The path to the JSON config file")
     parser.add_argument("--batch_size", type=int, default=32,
                          help='The batch size (default=32). Note, that the effective batch size is batch_size * N_resamplings')
@@ -22,12 +25,12 @@ def tede_argparse():
                          help='The dimension of the feedforward network model (default=32)')
     parser.add_argument("--dropout", type=float, default=0.1,
                          help='The dropout value (default=0.1)')
-    args = parser.parse_args()
+    args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:
         with open(args.config, 'r') as f:
             config_args = json.load(f)
         parser.set_defaults(**config_args)
 
-    final_args = parser.parse_args()
+    final_args = parser.parse_args("") # "" is used to avoid errors with Ipython
     return final_args
