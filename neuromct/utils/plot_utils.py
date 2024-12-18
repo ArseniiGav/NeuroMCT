@@ -2,8 +2,8 @@ import numpy
 import torch
 import matplotlib.pyplot as plt
 from .matplotlib_setup import matplotlib_setup
-from neuromct.dataset import load_minimax_scaler, get_val2_data_rates
-from neuromct.configs import data_configs
+from ..dataset import load_minimax_scaler, get_val2_data_rates
+from ..configs import data_configs
 matplotlib_setup(tick_labelsize=14, axes_labelsize=14, legend_fontsize=9)
 
 
@@ -240,7 +240,7 @@ class ModelResultsVisualizator:
 
                 ########### plot relative difference ###########
                 ax_diff.stairs(
-                    (predicted - truth) / truth,
+                    (predicted - truth) / (predicted + truth),
                     self.kNPE_bins_edges,
                     label=self.sources_names_to_vis[k], 
                     color=self.sources_colors_to_vis[k],
@@ -260,12 +260,12 @@ class ModelResultsVisualizator:
 
             ax_diff.set_xlim(0.0, 16.0)
             ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
-            ax_diff.set_ylim(-1.25, 3.25)
-            ax_diff.set_yticks([-1, 0, 1, 2, 3])
+            ax_diff.set_ylim(-1.25, 1.25)
+            ax_diff.set_yticks([-1, -0.5, 0, 0.5, 1])
             # ax_diff.set_yscale("symlog")
             if j == 0:
                 ax_diff.set_ylabel(
-                    r"$\frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{JUNOSW}}}$",
+                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{TEDE}} + f_{\rm{JUNOSW}}}$",
                     fontsize=17
                 )
 
@@ -310,11 +310,11 @@ class ModelResultsVisualizator:
         title = r'$\rm W^{T}_{1} = $' + f"{train_loss:.5f}, "
         title += r'$\rm W^{V_1}_{1} = $' + f"{val1_loss:.5f}, "
         title += r'$\rm W^{V_2}_{1} = $' + f"{val2_loss:.5f}, "
-        title += r'$\rm W^{V}_{1} = \rm \frac{W^{V_1}_{1} + 4 \cdot \rm W^{V_2}_{}}{5}$' + f' = {val_loss:.5f}'
+        title += r'$\rm W^{V}_{1} = \rm \frac{W^{V_1}_{1} + 4 \cdot \rm W^{V_2}_{1}}{5}$' + f' = {val_loss:.5f}'
 
         fig, ax = plt.subplots(1, 1, figsize=(16, 5))
         ax.plot(
-            numpy.arange(len(val1_loss_to_plot)-1),
+            numpy.arange(1, len(val1_loss_to_plot)),
             val1_loss_to_plot[1:], 
             label="Validation dataset №1: " + r'$\rm D^{C}_{V_1}$', 
             color='royalblue',
@@ -322,7 +322,7 @@ class ModelResultsVisualizator:
             linewidth=1.25
         )
         ax.plot(
-            numpy.arange(len(val2_loss_to_plot)-1),
+            numpy.arange(1, len(val2_loss_to_plot)),
             val2_loss_to_plot[1:], 
             label="Validation dataset №2: " + r'$\rm D^{C}_{V_2}$', 
             color='darkred', 
@@ -330,7 +330,7 @@ class ModelResultsVisualizator:
             linewidth=1.25
         )
         ax.plot(
-            numpy.arange(len(val_loss_to_plot)-1),
+            numpy.arange(1, len(val_loss_to_plot)),
             val_loss_to_plot[1:], 
             label="Validation datasets combined: " + r'$\rm D^{C}_{V}$', 
             color='darkgreen', 
@@ -338,8 +338,8 @@ class ModelResultsVisualizator:
             linewidth=1.25
         )
         ax.plot(
-            numpy.arange(len(train_loss_to_plot)-1),
-            train_loss_to_plot[1:], 
+            numpy.arange(1, len(train_loss_to_plot)+1),
+            train_loss_to_plot, 
             label="Training data: " + r'$\rm D^{C}_{T}$', 
             color='black',
             alpha=0.9, 
@@ -348,13 +348,13 @@ class ModelResultsVisualizator:
 
         ax.set_ylabel("Loss", fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-4, 1.1)
-        ax.set_xlabel('Iteration', fontsize=16)
+        ax.set_ylim(1e-4, 0.15)
+        ax.set_xlabel('Epoch', fontsize=16)
         ax.legend(loc="upper right", fontsize=16)
         ax.tick_params(axis='x', labelsize=14)
         ax.tick_params(axis='y', labelsize=14)
 
-        fig.suptitle(title, x=0.25, y=0.99, fontsize=20)
+        fig.suptitle(title, x=0.35, y=0.99, fontsize=20)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.png') 
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.pdf') 

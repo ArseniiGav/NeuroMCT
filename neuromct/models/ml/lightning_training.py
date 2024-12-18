@@ -38,6 +38,21 @@ class TEDELightningTraining(LightningModule):
             self.val2_params_to_vis = self.res_visualizator.val2_params_to_vis
             self.val2_source_types_to_vis = self.res_visualizator.val2_source_types_to_vis
 
+    def _compute_and_log_losses(self, spectra_predict, spectra_true, data_type):
+        loss = self.loss_function(spectra_predict, spectra_true)
+        self.log(f"{data_type}_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
+        return loss
+
+    def _compute_and_log_val_losses(self, spectra_predict, spectra_true, data_type):
+        loss = self.val_metric_function(spectra_predict, spectra_true)
+        self.log(f"{data_type}_loss", loss, prog_bar=True, on_epoch=True)
+        return loss
+
+    def configure_optimizers(self):      
+        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.999), weight_decay=1e-3)
+        scheduler = self.lr_scheduler(opt, mode='min', factor=0.9, patience=5, verbose=False) # depends on lr_scheduler. Needs more flexibility
+        return [opt], [{'scheduler': scheduler, 'monitor': "val_loss"}]
+
     def forward(self, params, source_types):
         return self.model(params, source_types)
 
@@ -45,8 +60,6 @@ class TEDELightningTraining(LightningModule):
         spectra_true, params, source_types = batch
         spectra_predict = self(params, source_types)
         loss = self._compute_and_log_losses(spectra_predict, spectra_true, "training")
-        self.train_loss = loss.item()
-        self.train_loss_to_plot.append(self.train_loss)
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
@@ -60,16 +73,17 @@ class TEDELightningTraining(LightningModule):
             loss = self._compute_and_log_val_losses(spectra_predict, spectra_true, "val2")
             self.val2_loss = loss.item()
             self.val2_loss_to_plot.append(self.val2_loss)
-
-            self.val_loss = (self.val1_loss + 4 * self.val2_loss) / 5
-            self.val_loss_to_plot.append(self.val_loss)
         return loss
         
     def on_validation_epoch_end(self):
+        self.val_loss = (self.val1_loss + 4 * self.val2_loss) / 5
+        self.val_loss_to_plot.append(self.val_loss)
         self.log('val_loss', self.val_loss, prog_bar=True)
-        if self.global_step > 0 and self.global_step % 500 == 0:
-            self.log('val_loss', self.val_loss, prog_bar=True)
 
+    def on_train_epoch_end(self):
+        self.train_loss = self.trainer.callback_metrics["training_loss"].item()
+        self.train_loss_to_plot.append(self.train_loss)
+        if self.global_step > 0:
             self.eval()
             with torch.no_grad():
                 val1_spectra_pdfs_to_vis = []
@@ -112,18 +126,3 @@ class TEDELightningTraining(LightningModule):
                 global_step=self.global_step,
                 current_epoch=self.current_epoch
             )
-
-    def configure_optimizers(self):      
-        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.95, 0.999), weight_decay=1e-4)
-        scheduler = self.lr_scheduler(opt, mode='min', factor=0.95, patience=10, verbose=False) # depends on lr_scheduler. Needs more flexibility
-        return [opt], [{'scheduler': scheduler, 'monitor': "val_loss"}]
-
-    def _compute_and_log_losses(self, spectra_predict, spectra_true, data_type):
-        loss = self.loss_function(spectra_predict, spectra_true)
-        self.log(f"{data_type}_loss", loss, prog_bar=True)
-        return loss
-
-    def _compute_and_log_val_losses(self, spectra_predict, spectra_true, data_type):
-        loss = self.val_metric_function(spectra_predict, spectra_true)
-        self.log(f"{data_type}_loss", loss, prog_bar=True, on_epoch=True)
-        return loss
