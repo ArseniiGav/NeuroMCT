@@ -130,7 +130,7 @@ class ModelResultsVisualizator:
     def _get_suptitle(self, current_epoch, global_step, val_metric, val_data_type):
         suptitle = f"Validation dataset №{val_data_type}. Epoch: {current_epoch}, "
         suptitle = suptitle + f"Iteration: {global_step // self.n_sources}, "
-        suptitle = suptitle + r"$W^{V_%s}_{1}$ " %val_data_type
+        suptitle = suptitle + r"$D^{V_%s}_{C}$ " %val_data_type
         suptitle = suptitle + f"= {val_metric:.5f}"
         return suptitle
 
@@ -287,7 +287,7 @@ class ModelResultsVisualizator:
             axes[0, j].sharex(axes[1, j])
 
         suptitle = self._get_suptitle(current_epoch, global_step, val2_loss, val_data_type=2)
-        fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
+        fig.suptitle(suptitle, x=0.4, y=0.99, fontsize=20)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.png')
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.pdf')
@@ -307,16 +307,16 @@ class ModelResultsVisualizator:
             current_epoch: int
         ) -> None:
 
-        title = r'$\rm W^{T}_{1} = $' + f"{train_loss:.5f}, "
-        title += r'$\rm W^{V_1}_{1} = $' + f"{val1_loss:.5f}, "
-        title += r'$\rm W^{V_2}_{1} = $' + f"{val2_loss:.5f}, "
-        title += r'$\rm W^{V}_{1} = \rm \frac{W^{V_1}_{1} + 4 \cdot \rm W^{V_2}_{1}}{5}$' + f' = {val_loss:.5f}'
+        title = r'$\rm D^{T}_{C} = $' + f"{train_loss:.5f}, "
+        title += r'$\rm D^{V_1}_{C} = $' + f"{val1_loss:.5f}, "
+        title += r'$\rm D^{V_2}_{C} = $' + f"{val2_loss:.5f}, "
+        title += r'$\rm D^{V}_{C} = \rm \frac{D^{V_1}_{C} + 4 \cdot \rm D^{V_2}_{C}}{5}$' + f' = {val_loss:.5f}'
 
         fig, ax = plt.subplots(1, 1, figsize=(16, 5))
         ax.plot(
             numpy.arange(1, len(val1_loss_to_plot)),
             val1_loss_to_plot[1:], 
-            label="Validation dataset №1: " + r'$\rm D^{C}_{V_1}$', 
+            label="Validation dataset №1: " + r'$\rm D^{V_1}_{C}$', 
             color='royalblue',
             alpha=0.9,  
             linewidth=1.25
@@ -324,7 +324,7 @@ class ModelResultsVisualizator:
         ax.plot(
             numpy.arange(1, len(val2_loss_to_plot)),
             val2_loss_to_plot[1:], 
-            label="Validation dataset №2: " + r'$\rm D^{C}_{V_2}$', 
+            label="Validation dataset №2: " + r'$\rm D^{V_2}_{C}$', 
             color='darkred', 
             alpha=0.9,
             linewidth=1.25
@@ -332,7 +332,7 @@ class ModelResultsVisualizator:
         ax.plot(
             numpy.arange(1, len(val_loss_to_plot)),
             val_loss_to_plot[1:], 
-            label="Validation datasets combined: " + r'$\rm D^{C}_{V}$', 
+            label="Validation datasets combined: " + r'$\rm D^{V}_{C}$', 
             color='darkgreen', 
             alpha=0.9,
             linewidth=1.25
