@@ -49,7 +49,7 @@ class TEDELightningTraining(LightningModule):
         return loss
 
     def configure_optimizers(self):      
-        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.999), weight_decay=1e-3)
+        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.999), weight_decay=1e-4)
         scheduler = self.lr_scheduler(opt, mode='min', factor=0.9, patience=5, verbose=False) # depends on lr_scheduler. Needs more flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_loss"}]
 
@@ -108,6 +108,13 @@ class TEDELightningTraining(LightningModule):
             )
 
             self.res_visualizator.plot_val2_spectra(
+                spectra_pdf_to_vis=val2_spectra_pdfs_to_vis,
+                current_epoch=self.current_epoch,
+                global_step=self.global_step,
+                val2_loss=self.val2_loss,
+            )
+
+            self.res_visualizator.plot_val2_spectra_with_rel_error(
                 spectra_pdf_to_vis=val2_spectra_pdfs_to_vis,
                 current_epoch=self.current_epoch,
                 global_step=self.global_step,
