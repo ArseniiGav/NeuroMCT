@@ -53,7 +53,7 @@ class TEDE(nn.Module):
             nn.Linear(output_dim // 2, output_dim),
             nn.Softmax(dim=1)
         )
-        self.apply(self._init_weights)
+        #self.apply(self._init_weights)
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
