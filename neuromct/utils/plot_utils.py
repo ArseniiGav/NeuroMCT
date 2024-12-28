@@ -123,15 +123,15 @@ class ModelResultsVisualizator:
     def _get_subplot_title(self, params_transformed):
         kB, fC, Y = params_transformed
         title = r"$k_{B}$"+f": {kB:.2f} [g/cm2/GeV], "
-        title = title + r"$f_{C}$"+f": {fC:.3f}, "
-        title = title + r"$Y$"+f": {Y:.0f} [1/MeV]"
+        title += r"$f_{C}$"+f": {fC:.3f}, "
+        title += r"$Y$"+f": {Y:.0f} [1/MeV]"
         return title
     
     def _get_suptitle(self, current_epoch, global_step, val_metric, val_data_type):
         suptitle = f"Validation dataset №{val_data_type}. Epoch: {current_epoch}, "
-        suptitle = suptitle + f"Iteration: {global_step // self.n_sources}, "
-        suptitle = suptitle + r"$D^{V_%s}_{C}$ " %val_data_type
-        suptitle = suptitle + f"= {val_metric:.5f}"
+        suptitle += f"Iteration: {global_step}, "
+        suptitle += r"$D^{V_%s}_{C}$ " %val_data_type
+        suptitle += f"= {val_metric:.5f}"
         return suptitle
 
     def plot_val1_spectra(
@@ -204,6 +204,68 @@ class ModelResultsVisualizator:
             val2_loss: float,
         ) -> None:
               
+        fig, ax = plt.subplots(1, self.params_dim, 
+                               figsize=(self.params_dim*6, self.params_dim*2))
+        ax = ax.flatten()
+        for i in range(self.params_dim * self.n_sources):
+            j = i // self.n_sources
+            k = i % self.n_sources
+            subplot_title = self._get_subplot_title(
+                (self.kB_val2_values[j], self.fC_val2_values[j], self.LY_val2_values[j])
+            )
+
+            ########### plot truth ###########
+            ax[j].stairs(
+                self.val2_data_rates_to_vis[j][k], self.kNPE_bins_edges,
+                label=self.sources_names_to_vis[k],
+                color=self.sources_colors_to_vis[k],
+                linewidth=1.25,
+                alpha=0.6
+            )
+
+            ########### plot predicted ###########
+            ax[j].stairs(
+                spectra_pdf_to_vis[i], self.kNPE_bins_edges,
+                color=self.sources_colors_to_vis[k],
+                linestyle='--',
+                linewidth=1.25,
+                alpha=1.0
+            )
+            
+            if k == 4:
+                ax[j].plot([0], [0], color='black', linewidth=2, label="JUNOSW")
+                ax[j].plot([0], [0], color='black', linestyle='--', linewidth=2, label="TEDE")
+                
+                handles, labels = ax[j].get_legend_handles_labels()                
+                legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=14, loc="upper right",)
+                legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=14, loc=(0.31, 0.82))
+                ax[j].add_artist(legend1)
+                ax[j].add_artist(legend2)
+            
+            ax[j].set_title(subplot_title, fontsize=14)
+            ax[j].set_ylim(1e-5, 0.4)
+            ax[j].set_xlim(0.0, 16.0)
+            ax[j].set_yscale("log")
+            ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
+
+            if j == 0:
+                ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$", fontsize=18)
+
+        suptitle = self._get_suptitle(current_epoch, global_step, val2_loss, val_data_type=2)
+        fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
+        fig.tight_layout()
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.pdf')
+        plt.close(fig)
+
+    def plot_val2_spectra_with_rel_error(
+            self,
+            spectra_pdf_to_vis: numpy.ndarray,
+            current_epoch: int,
+            global_step: int,
+            val2_loss: float,
+        ) -> None:
+              
         fig, axes = plt.subplots(2, self.params_dim, 
                                  figsize=(self.params_dim * 6, self.params_dim * 2.5),
                                  gridspec_kw={'height_ratios': [2, 1], 'hspace': 0.1})
@@ -240,7 +302,7 @@ class ModelResultsVisualizator:
 
                 ########### plot relative difference ###########
                 ax_diff.stairs(
-                    (predicted - truth) / (predicted + truth),
+                    (predicted - truth) / (truth + 1e-5),
                     self.kNPE_bins_edges,
                     label=self.sources_names_to_vis[k], 
                     color=self.sources_colors_to_vis[k],
@@ -260,12 +322,12 @@ class ModelResultsVisualizator:
 
             ax_diff.set_xlim(0.0, 16.0)
             ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
-            ax_diff.set_ylim(-1.25, 1.25)
-            ax_diff.set_yticks([-1, -0.5, 0, 0.5, 1])
+            ax_diff.set_ylim(-1.25, 2.25)
+            ax_diff.set_yticks([-1, -0, 1, 2])
             # ax_diff.set_yscale("symlog")
             if j == 0:
                 ax_diff.set_ylabel(
-                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{TEDE}} + f_{\rm{JUNOSW}}}$",
+                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{JUNOSW}} + \varepsilon}$",
                     fontsize=17
                 )
 
@@ -287,10 +349,10 @@ class ModelResultsVisualizator:
             axes[0, j].sharex(axes[1, j])
 
         suptitle = self._get_suptitle(current_epoch, global_step, val2_loss, val_data_type=2)
-        fig.suptitle(suptitle, x=0.4, y=0.99, fontsize=20)
+        fig.suptitle(suptitle, x=0.35, y=0.99, fontsize=20)
         fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.png')
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.pdf')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2_with_rel_errors.png')
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2_with_rel_errors.pdf')
         plt.close(fig)
 
     def plot_training_process(
