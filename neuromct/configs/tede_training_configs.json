@@ -1,7 +1,7 @@
 {
-    "n_data_aug": 200,
+    "n_data_aug": 100,
     "batch_size": 2048,
-    "lr": 1e-3,
+    "lr": 2e-3,
     "output_dim": 800,
     "d_model": 100,
     "nhead": 5,
