@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
 from neuromct.models.ml import TEDE, TEDELightningTraining
-from neuromct.models.ml.losses import CosineDistanceLoss
+from neuromct.models.ml.losses import CosineDistanceLoss, GeneralizedKLDivLoss
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse, create_dataset, define_transformations
 from neuromct.utils import ModelResultsVisualizator
@@ -31,7 +31,7 @@ train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, 
 val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
 val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
-loss_function = CosineDistanceLoss()
+loss_function = GeneralizedKLDivLoss(log_input=False, log_target=False, reduction='batchmean')
 val_metric_function = CosineDistanceLoss()
 
 optimizer = optim.AdamW
@@ -76,7 +76,6 @@ trainer_tede = Trainer(
         early_stopping_callback,
         LearningRateMonitor(),
     ],
-    # logger=neptune_logger,
     enable_checkpointing=True,
 )
 
