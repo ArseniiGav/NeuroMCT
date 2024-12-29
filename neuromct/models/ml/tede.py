@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from .modules import LearnableTemperatureSoftmax
 
 class TEDE(nn.Module):
     def __init__(self,
@@ -51,7 +52,8 @@ class TEDE(nn.Module):
             nn.LayerNorm(output_dim // 2),
             nn.GELU(),
             nn.Linear(output_dim // 2, output_dim),
-            nn.Softmax(dim=1)
+            # nn.Softmax(dim=1)
+            LearnableTemperatureSoftmax()
         )
         #self.apply(self._init_weights)
 
