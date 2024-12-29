@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 
-
 sources = ['Cs137', 'K40', 'Co60', 'AmBe', 'AmC']
 sources_names_to_vis = [
     r'$\rm {}^{137} Cs$',
@@ -10,7 +9,8 @@ sources_names_to_vis = [
     r'$\rm {}^{241}Am \mathrm{-} Be$',
     r'$\rm {}^{241}Am \mathrm{-} {}^{13}C$'
 ]
-sources_colors_to_vis = ['darkgreen', 'royalblue', 'firebrick', 'indigo', 'peru']
+sources_colors_to_vis = ['darkgreen', 'royalblue', 
+                         'firebrick', 'indigo', 'peru']
 bins = np.arange(0.0, 16.01, 0.02, dtype=np.float64)
 n_bins = bins.shape[0] - 1
 
@@ -26,8 +26,19 @@ data_configs = {
     "sources": sources,
     "sources_names_to_vis": sources_names_to_vis,   
     "sources_colors_to_vis": sources_colors_to_vis,
-    "params_values_to_vis": torch.tensor([0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float64),
-    "base_value_to_vis": torch.tensor(0.4750, dtype=torch.float64),
+
+    # params for plots configs
+    "n_params_values_to_vis": 4,
+
+    "params_values_to_vis_training": torch.tensor(
+        [0.0500, 0.3500, 0.6500, 0.9500], dtype=torch.float64),
+    "base_value_to_vis_training": torch.tensor(
+        0.5000, dtype=torch.float64),
+
+    "params_values_to_vis_val1": torch.tensor(
+        [0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float64),
+    "base_value_to_vis_val1": torch.tensor(
+        0.4750, dtype=torch.float64),
 
     # data processing configs
     "training_grid_size": 21,
