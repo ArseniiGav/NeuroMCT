@@ -2,7 +2,6 @@ import argparse
 import json
 import pkg_resources
 
-
 def tede_argparse():
     configs_path = pkg_resources.resource_filename("neuromct", "configs/")
 
