@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def construct_params_grid(kB, fC, LY, grid_size):
     kB_list = []
     fC_list = []

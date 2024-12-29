@@ -5,7 +5,6 @@ from neuromct.dataset import load_minimax_scaler, load_raw_data
 from neuromct.utils import construct_params_grid, construct_source_types_vector
 from neuromct.configs import data_configs
 
-
 parser = argparse.ArgumentParser(description='Process the raw data and build model inputs')
 parser.add_argument("--dataset_type", type=str, default="", help='Dataset type: training/val1/val2')
 args = parser.parse_args()
