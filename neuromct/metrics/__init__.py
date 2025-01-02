@@ -1,1 +1,1 @@
-from metrics import LpNormDistance
+from .metrics import LpNormDistance
