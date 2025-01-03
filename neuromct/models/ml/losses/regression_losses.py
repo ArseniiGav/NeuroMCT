@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class CosineDistanceLoss(nn.Module):
     def __init__(self):
         super(CosineDistanceLoss, self).__init__()
@@ -23,6 +24,7 @@ class GeneralizedPoissonNLLLoss(nn.Module):
         else:
             output = nn.PoissonNLLLoss(log_input=False)
         return output
+
 
 class GeneralizedKLDivLoss(nn.Module):
     def __init__(self, log_input, log_target, reduction, eps=1e-9):

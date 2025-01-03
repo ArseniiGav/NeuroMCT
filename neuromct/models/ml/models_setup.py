@@ -13,7 +13,6 @@ def setup(model_type):
     if model_type == 'tede':
         args = tede_argparse()
         model = TEDE(
-            param_dim=data_configs['params_dim'],
             n_sources=data_configs['n_sources'],
             output_dim=args.output_dim,
             d_model=args.d_model,
@@ -21,6 +20,7 @@ def setup(model_type):
             num_encoder_layers=args.num_encoder_layers,
             dim_feedforward=args.dim_feedforward,
             dropout=args.dropout,
+            temperature=args.temperature
         ).double().to(device)
         
         model.load_state_dict(torch.load(f"{data_configs['path_to_models']}/tede_model.pth", map_location=device))
