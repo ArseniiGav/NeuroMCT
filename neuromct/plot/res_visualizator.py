@@ -130,18 +130,26 @@ class ModelResultsVisualizator:
         title += r"$Y$"+f": {Y:.0f} [1/MeV]"
         return title
     
-    def _get_suptitle_val(self, current_epoch, global_step, val_metric, val_data_type):
+    def _get_suptitle_val(self, current_epoch, global_step, val_metrics, metric_names, val_data_type):
         suptitle = f"Validation dataset №{val_data_type}. Epoch: {current_epoch}, "
         suptitle += f"Iteration: {global_step}, "
-        suptitle += r"$\rm D^{V_%s}_{C}$ " %val_data_type
-        suptitle += f"= {val_metric:.5f}"
+        for name in metric_names:
+            if name == "wasserstein":
+                suptitle += r"$d^{V_%s}_{1}$ " %val_data_type
+                suptitle += f"= {val_metrics[name]:.4f}; "
+            elif name == "cramer":
+                suptitle += r"$d^{V_%s}_{2}$ " %val_data_type
+                suptitle += f"= {val_metrics[name]:.4f}; "
+            elif name == "ks":
+                suptitle += r"$d^{V_%s}_{\infty}$ " %val_data_type
+                suptitle += f"= {val_metrics[name]:.4f}"
         return suptitle
 
     def _get_suptitle_training(self, current_epoch, global_step, train_loss):
         suptitle = f"Training dataset. Epoch: {current_epoch}, "
         suptitle += f"Iteration: {global_step}, "
-        suptitle += r"$\rm D^{T}_{KL}$ "
-        suptitle += f"= {train_loss:.5f}"
+        suptitle += r"$L^{T}_{\rm KL}$ "
+        suptitle += f"= {train_loss:.4f}"
         return suptitle
 
     def plot_spectra(
@@ -152,7 +160,8 @@ class ModelResultsVisualizator:
             current_epoch: int,
             global_step: int,
             metric_value: float,
-            dataset_type: str
+            dataset_type: str,
+            **kwargs,
         ) -> None:
         fig, ax = plt.subplots(self.params_dim, self.n_params_values_to_vis,
                                figsize=(self.params_dim*6, self.n_params_values_to_vis*3))
@@ -205,13 +214,15 @@ class ModelResultsVisualizator:
         
         if dataset_type == 'training':
             suptitle = self._get_suptitle_training(current_epoch, global_step, metric_value)
-            fig.suptitle(suptitle, x=0.25, y=0.99, fontsize=20)
+            fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
             fig.tight_layout()
             fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_tr.png')
             fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_tr.pdf')
         elif dataset_type == 'val1':
-            suptitle = self._get_suptitle_val(current_epoch, global_step, metric_value, val_data_type=1)
-            fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
+            metric_names = kwargs["metric_names"]
+            suptitle = self._get_suptitle_val(
+                current_epoch, global_step, metric_value, metric_names, val_data_type=1)
+            fig.suptitle(suptitle, x=0.4, y=0.99, fontsize=20)
             fig.tight_layout()
             fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v1.png')
             fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v1.pdf')
@@ -224,6 +235,7 @@ class ModelResultsVisualizator:
             current_epoch: int,
             global_step: int,
             metric_value: float,
+            metric_names: list,
         ) -> None:
         fig, ax = plt.subplots(1, self.params_dim, 
                                figsize=(self.params_dim*6, self.params_dim*2))
@@ -272,8 +284,9 @@ class ModelResultsVisualizator:
             if j == 0:
                 ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$", fontsize=18)
 
-        suptitle = self._get_suptitle_val(current_epoch, global_step, metric_value, val_data_type=2)
-        fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
+        suptitle = self._get_suptitle_val(
+            current_epoch, global_step, metric_value, metric_names, val_data_type=2)
+        fig.suptitle(suptitle, x=0.4, y=0.99, fontsize=20)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.png')
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2.pdf')
@@ -286,6 +299,7 @@ class ModelResultsVisualizator:
             current_epoch: int,
             global_step: int,
             metric_value: float,
+            metric_names: list,
         ) -> None:
         fig, axes = plt.subplots(2, self.params_dim, 
                                  figsize=(self.params_dim * 6, self.params_dim * 2.5),
@@ -368,8 +382,9 @@ class ModelResultsVisualizator:
         for j in range(self.params_dim):
             axes[0, j].sharex(axes[1, j])
 
-        suptitle = self._get_suptitle_val(current_epoch, global_step, metric_value, val_data_type=2)
-        fig.suptitle(suptitle, x=0.35, y=0.99, fontsize=20)
+        suptitle = self._get_suptitle_val(
+            current_epoch, global_step, metric_value, metric_names, val_data_type=2)
+        fig.suptitle(suptitle, x=0.45, y=0.99, fontsize=20)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2_with_rel_errors.png')
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_v2_with_rel_errors.pdf')
@@ -377,120 +392,128 @@ class ModelResultsVisualizator:
 
     def plot_training_process(
             self,
-            val1_metric_to_plot: list,
-            val2_metric_to_plot: list,
-            val_metric_to_plot: list,
             train_loss_to_plot: list,
             train_loss_value: float,
+            global_step: int,
+            current_epoch: int
+        ) -> None:
+        title = "The loss averaged over the last batch: " + r'$L^{B}_{\rm KL} = $' + f"{train_loss_value:.4f}"
+        label = (r"$L_{\rm KL} = "
+                 r"\frac{1}{|B| \cdot N_b} \sum_{i=1}^{|B|} \ \sum_{j=1}^{N_b} "
+                 r"f\left(\mathbf{X}_{i,j}^{\rm{JUNOSW}}\right) \cdot "
+                 r"\log\left( "
+                 r"\frac{f\left(\mathbf{X}_{i,j}^{\rm{JUNOSW}}\right)}{f\left(\mathbf{X}_{i,j}^{\rm{TEDE}}\right)} "
+                 r"\right)$")
+
+        x_to_plot = np.arange(1, global_step+1)
+        fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+        ax.plot(
+            x_to_plot,
+            train_loss_to_plot,
+            label=label,
+            color='black',
+            alpha=0.7,
+            linewidth=1.25
+        )
+        ax.set_ylabel("KL-divergence loss: " + r"$L_{\rm KL}$", fontsize=16, color='black')
+        ax.set_xlabel('Iteration', fontsize=16)
+        ax.set_yscale("log")
+        ax.set_ylim(5e-3, 2.0)
+        ax.tick_params(axis='y', labelsize=14, labelcolor='black')
+        ax.legend(loc="upper right", fontsize=16)
+
+        fig.suptitle(title, x=0.3, y=0.975, fontsize=18)
+        fig.tight_layout()
+        fig.savefig(f"{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.png") 
+        fig.savefig(f"{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.pdf") 
+        plt.close(fig)
+
+    def plot_val_metrics(
+            self,
+            val1_metrics_to_plot: list,
+            val2_metrics_to_plot: list,
+            val_metrics_to_plot: list,
             val1_metric_value: float,
             val2_metric_value: float,
             val_metric_value: float,
             global_step: int,
-            current_epoch: int
+            current_epoch: int,
+            val_metric_name: str
         ) -> None:
-        title = r'$\rm D^{T}_{KL} = $' + f"{train_loss_value:.5f}, "
-        title += r'$\rm D^{V_1}_{C} = $' + f"{val1_metric_value:.5f}, "
-        title += r'$\rm D^{V_2}_{C} = $' + f"{val2_metric_value:.5f}, "
-        title += r'$\rm D^{V}_{C} = \rm \frac{D^{V_1}_{C} + 4 \cdot \rm D^{V_2}_{C}}{5}$' + f' = {val_metric_value:.5f}'
 
+        if val_metric_name == "wasserstein":
+            title = r"$d^{V_1}_{1}$ " + f"= {val1_metric_value:.4f}; "
+            title += r"$d^{V_2}_{1}$ " + f"{val2_metric_value:.4f}; "
+            title += r"$d^{V}_{1} = \frac{1}{2} \left(d^{V_1}_{1} + d^{V_2}_{1}\right)$"
+            title += f' = {val_metric_value:.4f}'
+
+            ylabel = "Wasserstein distance: " + r"$d^{V}_{1}$"
+
+            # label = (r"$d_p = "
+            #          r"\frac{1}{|B|} \sum_{i=1}^{|B|} \sum_{j=1}^{N_b} "
+            #          r"\left| F\left(\mathbf{X}_{i, j}^{\rm{JUNOSW}}\right) - "
+            #          r"F\left(\mathbf{X}_{i, j}^{\rm{TEDE}}\right) \right| "
+            #          r"\Delta x$")
+        elif val_metric_name == "cramer":
+            title = r"$d^{V_1}_{2}$ " + f"= {val1_metric_value:.4f}; "
+            title += r"$d^{V_2}_{2}$ " + f"{val2_metric_value:.4f}; "
+            title += r"$d^{V}_{2} = \frac{1}{2} \left(d^{V_1}_{2} + d^{V_2}_{2}\right)$"
+            title += f' = {val_metric_value:.4f}'
+
+            ylabel = "Cramér-von Mises distance: " + r"$d^{V}_{1}$"
+
+            # label = (r"$d_2 = "
+            #          r"\frac{1}{|B|} \sum_{i=1}^{|B|} \sqrt{"
+            #          r"\sum_{j=1}^{N_b} \left( F\left(\mathbf{X}_{i, j}^{\rm{JUNOSW}}\right) - "
+            #          r"F\left(\mathbf{X}_{i, j}^{\rm{TEDE}}\right) \right)^2 "
+            #          r"\Delta x }$")  
+        elif val_metric_name == "ks":
+            title = r"$d^{V_1}_{\infty}$ " + f"= {val1_metric_value:.4f}; "
+            title += r"$d^{V_2}_{\infty}$ " + f"{val2_metric_value:.4f}; "
+            title += r"$d^{V}_{\infty} = \frac{1}{2} \left(d^{V_1}_{\infty} + d^{V_2}_{\infty}\right)$"
+            title += f' = {val_metric_value:.4f}'
+
+            ylabel = "Kolmogorov-Smirnov distance: " + r"$d^{V}_{\infty}$"
+
+            # label = (r"$d_{\infty} = "
+            #          r"\frac{1}{|B|} \sum_{i=1}^{|B|} \max_{j \in \{1, \dots, N_b\}} "
+            #          r"\left| F\left(\mathbf{X}_{i, j}^{\rm{JUNOSW}}\right) - "
+            #          r"F\left(\mathbf{X}_{i, j}^{\rm{TEDE}}\right) \right| $") 
         x_to_plot = np.arange(1, current_epoch+2)
-        fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
-        ax1.plot(
+        fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+        ax.plot(
             x_to_plot,
-            train_loss_to_plot,
-            label="Training data: " + r'$\rm D^{C}_{T}$',
-            color='black',
-            alpha=0.9,
-            linewidth=1.25
-        )
-        ax1.set_ylabel("Training Loss", fontsize=16, color='black')
-        ax1.set_xlabel('Epoch', fontsize=16)
-        ax1.set_yscale("log")
-        ax1.set_ylim(1e-2, 1.0)
-        ax1.tick_params(axis='y', labelsize=14, labelcolor='black')
-
-        ax2 = ax1.twinx()
-        ax2.plot(
-            x_to_plot,
-            val1_metric_to_plot[1:],
-            label="Validation dataset №1: " + r'$\rm D^{V_1}_{C}$',
+            val1_metrics_to_plot[1:],
             color='royalblue',
+            label="Validation dataset №1",
             alpha=0.9,
             linewidth=1.25
         )
-        ax2.plot(
+        ax.plot(
             x_to_plot,
-            val2_metric_to_plot[1:],
-            label="Validation dataset №2: " + r'$\rm D^{V_2}_{C}$',
+            val2_metrics_to_plot[1:],
+            label="Validation dataset №2",
             color='darkred',
             alpha=0.9,
             linewidth=1.25
         )
-        ax2.plot(
+        ax.plot(
             x_to_plot,
-            val_metric_to_plot[1:],
-            label="Validation datasets combined: " + r'$\rm D^{V}_{C}$',
+            val_metrics_to_plot[1:],
+            label="Validation datasets average",
             color='darkgreen',
             alpha=0.9,
             linewidth=1.25
         )
-        ax2.set_ylabel("Validation Metrics", fontsize=16, color='green')
-        ax2.tick_params(axis='y', labelsize=14, labelcolor='green')
-        ax2.set_yscale("log")
-        ax2.set_ylim(1e-4, 1e-1)
-
-        # Legends
-        lines1, labels1 = ax1.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=14)
-
-        fig.suptitle(title, x=0.35, y=0.975, fontsize=16)
-        fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.png') 
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.pdf') 
-        plt.close(fig)
-
-    def plot_tparam(
-            self,
-            tparams: list,
-            global_step: int,
-            current_epoch: int
-        ) -> None:
-
-        x_to_plot = np.arange(1, current_epoch+2)
-
-        tparams = torch.stack(tparams)
-        tparams = tparams.view(current_epoch+2, self.n_sources, -1)
-        tparams_mean_per_source = tparams.mean(dim=2)
-        tparams_low_per_source = torch.quantile(tparams, q=0.16, dim=2)
-        tparams_high_per_source = torch.quantile(tparams, q=0.84, dim=2)
-
-        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-        for i in range(self.n_sources):
-            ax.plot(
-                x_to_plot,
-                tparams_mean_per_source[1:, i],
-                label=self.sources_names_to_vis[i],
-                color=self.sources_colors_to_vis[i],
-                alpha=0.9,
-                linewidth=1.25
-            )
-
-            ax.fill_between(
-                x_to_plot,
-                tparams_low_per_source[1:, i], 
-                tparams_high_per_source[1:, i], 
-                fc=self.sources_colors_to_vis[i],
-                alpha=0.1
-            )
-
-        ax.set_ylim(0.25, 3.0)
-        ax.set_ylabel("Temperature of NP-Softmax", fontsize=16, color='black')
+        ax.set_ylabel(ylabel, fontsize=15, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
+        ax.set_yscale("log")
+        ax.set_ylim(1e-2, 1.0)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
-        ax.legend(loc="upper left", fontsize=16)
+        ax.legend(loc="upper right", fontsize=15)
 
+        fig.suptitle(title, x=0.3, y=0.975, fontsize=16)
         fig.tight_layout()
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_tparam.png') 
-        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_tparam.pdf') 
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_val_metric_{val_metric_name}.png') 
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_val_metric_{val_metric_name}.pdf') 
         plt.close(fig)
