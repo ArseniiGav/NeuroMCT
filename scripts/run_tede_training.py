@@ -7,7 +7,8 @@ from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning import Trainer
 
 from neuromct.models.ml import TEDE, TEDELightningTraining
-from neuromct.models.ml.losses import CosineDistanceLoss, GeneralizedKLDivLoss
+from neuromct.models.ml.losses import GeneralizedKLDivLoss
+from neuromct.models.ml.metrics import LpNormDistance
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse
 from neuromct.utils import create_dataset
@@ -17,7 +18,6 @@ from neuromct.utils import res_visualizator_setup
 path_to_models = data_configs['path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 n_sources = data_configs['n_sources']
-params_dim = data_configs['params_dim']
 model_res_visualizator = res_visualizator_setup(data_configs)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -44,7 +44,7 @@ val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=Fals
 val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
 
 loss_function = GeneralizedKLDivLoss(log_input=False, log_target=False, reduction='batchmean')
-val_metric_function = CosineDistanceLoss()
+val_metric_function = LpNormDistance(p=2) # Cramér-von Mises distance
 
 optimizer = optim.AdamW
 lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
@@ -55,7 +55,6 @@ checkpoint_callback = ModelCheckpoint(save_top_k=1, monitor=monitor_metric_check
 early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=50)
 
 tede_model = TEDE(
-    param_dim=params_dim,
     n_sources=n_sources,
     output_dim=args.output_dim,
     d_model=args.d_model,
@@ -63,6 +62,7 @@ tede_model = TEDE(
     num_encoder_layers=args.num_encoder_layers,
     dim_feedforward=args.dim_feedforward,
     dropout=args.dropout,
+    temperature=args.temperature
 )
 
 tede_model_lightning_training = TEDELightningTraining(
