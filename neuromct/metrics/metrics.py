@@ -11,18 +11,48 @@ import torch.nn as nn
 
 
 class LpNormDistance(nn.Module):
+    r"""
+    The module to compute the Lp-norm distance between two one-dimensional probability distributions.
+    Parameters
+        - p : int, float, or torch.inf, optional (default=2)
+            The order of the norm:
+            - If p = 1, computes the Wasserstein distance.
+            - If p = 2, computes the Cramér-von Mises distance.
+            - If p = torch.inf, computes the Kolmogorov-Smirnov distance.
+            - if p is a positive float computer the general Lp distance.
+    Methods
+        - forward(u_values, v_values, u_weights=None, v_weights=None)
+            Compute Lp-norm distance between two one-dimensional probability distributions u and v,
+            whose respective CDFs are U and V. Where the Lp-norm distance that is defined as follows:
+
+            .. math::
+
+                l_p(u, v) = \left( \int_{-\infty}^{+\infty} |U-V|^p \right)^{1/p}
+
+            p is a positive parameter; p = 1 gives the Wasserstein distance, p = 2
+            gives the Cramér-von Mises distance.
+
+            Parameters
+            ----------
+            u_values, v_values: array_like
+                Values observed in the (empirical) distribution.
+            u_weights, v_weights: array_like, optional
+                Weight for each value. If unspecified, each value is assigned the same weight.
+                u_weights (resp. v_weights) must have the same length as u_values (resp. v_values). 
+
+            Returns
+            -------
+            distance : float
+                The computed distance between the distributions.
+    """
     def __init__(self, p=2):
-        """
-        Initialize the LpNormDistance module.
-        Args:
-            p: int, float, or torch.inf
-                - If p = 1, computes Wasserstein distance.
-                - If p = 2, computes Cramér-von Mises distance.
-                - If p = torch.inf, computes Kolmogorov-Smirnov distance.
-        """
         super().__init__()
-        self.p = p
-    
+        self.p = torch.tensor(p)
+        if torch.isfinite(self.p) and self.p <= 0:
+            raise ValueError("p must be positive: p > 0.")
+        elif not torch.isfinite(self.p) and torch.sign(self.p) == -1:
+            raise ValueError("p cannot be neg. infinity, p must be positive: p > 0.")
+
     def _compute_cdf(self, values, weights, all_values, batch_size):
         indices = torch.searchsorted(values, all_values[:, :-1], right=True)
         if weights is None:
@@ -58,48 +88,10 @@ class LpNormDistance(nn.Module):
         cdfs_deltas = torch.abs(u_cdf - v_cdf)        
         return cdfs_deltas, x_deltas
 
-    def forward(self, x_values, y_values, x_weights=None, y_weights=None):
-        r"""
-        Compute, between two one-dimensional distributions :math:`u` and
-        :math:`v`, whose respective CDFs are :math:`U` and :math:`V`, the
-        statistical distance that is defined as:
-
-        .. math::
-
-            l_p(u, v) = \left( \int_{-\infty}^{+\infty} |U-V|^p \right)^{1/p}
-
-        p is a positive parameter; p = 1 gives the Wasserstein distance, p = 2
-        gives the energy distance.
-
-        Parameters
-        ----------
-        u_values, v_values : array_like
-            Values observed in the (empirical) distribution.
-        u_weights, v_weights : array_like, optional
-            Weight for each value. If unspecified, each value is assigned the same
-            weight.
-            `u_weights` (resp. `v_weights`) must have the same length as
-            `u_values` (resp. `v_values`). If the weight sum differs from 1, it
-            must still be positive and finite so that the weights can be normalized
-            to sum to 1.
-
-        Returns
-        -------
-        distance : float
-            The computed distance between the distributions.
-        """
+    def forward(self, u_values, v_values, u_weights=None, v_weights=None):
         # Get the differences between CDFs and the the differences between the corresponding values
-        cdfs_deltas, x_deltas = self._get_cdf_diffs(x_values, y_values, x_weights, y_weights)
-        if self.p == 1:
-            # Wasserstein distance
-            return torch.sum(cdfs_deltas * x_deltas, dim=1)
-        elif self.p == 2:
-            # Cramér-von Mises distance
-            return torch.sqrt(torch.sum((cdfs_deltas ** 2) * x_deltas, dim=1))
-        elif self.p == float("inf"):
-            # Kolmogorov-Smirnov (KS) distance
-            return torch.max(cdfs_deltas, dim=1).values
+        cdfs_deltas, x_deltas = self._get_cdf_diffs(u_values, v_values, u_weights, v_weights)
+        if torch.isfinite(self.p) and self.p > 0:
+            return torch.pow(torch.sum((cdfs_deltas ** self.p) * x_deltas, dim=1), 1 / self.p)
         else:
-            # General Lp distance
-            integral = torch.sum((cdfs_deltas ** self.p) * x_deltas, dim=1)
-            return torch.pow(integral, 1 / self.p)
+            return torch.max(cdfs_deltas, dim=1).values
