@@ -1,6 +1,6 @@
 {
-    "n_data_aug": 1,
-    "batch_size": 32,
+    "n_sources": 5,
+    "batch_size": 64,
     "lr": 2e-3,
     "output_dim": 800,
     "d_model": 100,
