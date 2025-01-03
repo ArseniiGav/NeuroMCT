@@ -8,8 +8,10 @@ def tede_argparse():
     parser = argparse.ArgumentParser(description='Train the TEDE model')
     parser.add_argument("--config", type=str, default=f'{configs_path}/tede_training_configs.json',
                          help="The path to the JSON config file")
+    parser.add_argument("--n_sources", type=int, default=5,
+                         help='The number of calibration sources (default=5).')
     parser.add_argument("--batch_size", type=int, default=32,
-                         help='The batch size (default=32). Note, that the effective batch size is batch_size * N_resamplings')
+                         help='The batch size (default=32).')
     parser.add_argument("--lr", type=float, default=5e-4,
                         help='The learning rate (default=5e-4)')
     parser.add_argument("--output_dim", type=int, default=800,
