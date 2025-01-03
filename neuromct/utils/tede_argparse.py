@@ -24,6 +24,8 @@ def tede_argparse():
                          help='The dimension of the feedforward network model (default=32)')
     parser.add_argument("--dropout", type=float, default=0.1,
                          help='The dropout value (default=0.1)')
+    parser.add_argument("--temperature", type=float, default=2.0,
+                         help='The temperature parameter for the output Softmax layer (default=2.0)')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:

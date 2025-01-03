@@ -59,12 +59,12 @@ class TEDELightningTraining(LightningModule):
         return metric
 
     def configure_optimizers(self):      
-        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.999), weight_decay=1e-4)
+        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.999), weight_decay=1e-3)
         scheduler = self.lr_scheduler(opt, mode='min', factor=0.9, patience=5, verbose=False) # depends on lr_scheduler. Needs more flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_metric"}]
 
-    def forward(self, params, source_types):
-        return self.model(params, source_types)
+    def forward(self, params, source_types, t_out=False):
+        return self.model(params, source_types, t_out=t_out)
 
     def training_step(self, batch):
         spectra_true, params, source_types = batch
@@ -108,7 +108,8 @@ class TEDELightningTraining(LightningModule):
                 for i in range(len(self.val1_params_to_vis)):
                     val1_spectra_pdf_to_vis = self(
                         self.val1_params_to_vis[i].to(self.device),
-                        self.val1_source_types_to_vis[i].to(self.device)
+                        self.val1_source_types_to_vis[i].to(self.device),
+                        
                     ).detach().cpu()
                     val1_spectra_pdfs_to_vis.append(val1_spectra_pdf_to_vis)
 

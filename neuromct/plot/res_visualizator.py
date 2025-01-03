@@ -393,10 +393,10 @@ class ModelResultsVisualizator:
         title += r'$\rm D^{V_2}_{C} = $' + f"{val2_metric_value:.5f}, "
         title += r'$\rm D^{V}_{C} = \rm \frac{D^{V_1}_{C} + 4 \cdot \rm D^{V_2}_{C}}{5}$' + f' = {val_metric_value:.5f}'
 
-        fig, ax1 = plt.subplots(1, 1, figsize=(16, 5))
-
+        x_to_plot = np.arange(1, current_epoch+2)
+        fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
         ax1.plot(
-            np.arange(1, len(train_loss_to_plot)+1),
+            x_to_plot,
             train_loss_to_plot,
             label="Training data: " + r'$\rm D^{C}_{T}$',
             color='black',
@@ -406,12 +406,12 @@ class ModelResultsVisualizator:
         ax1.set_ylabel("Training Loss", fontsize=16, color='black')
         ax1.set_xlabel('Epoch', fontsize=16)
         ax1.set_yscale("log")
-        # ax1.set_ylim(1e-4, 0.15)
+        ax1.set_ylim(1e-2, 1.0)
         ax1.tick_params(axis='y', labelsize=14, labelcolor='black')
 
         ax2 = ax1.twinx()
         ax2.plot(
-            np.arange(1, len(val1_metric_to_plot)),
+            x_to_plot,
             val1_metric_to_plot[1:],
             label="Validation dataset №1: " + r'$\rm D^{V_1}_{C}$',
             color='royalblue',
@@ -419,7 +419,7 @@ class ModelResultsVisualizator:
             linewidth=1.25
         )
         ax2.plot(
-            np.arange(1, len(val2_metric_to_plot)),
+            x_to_plot,
             val2_metric_to_plot[1:],
             label="Validation dataset №2: " + r'$\rm D^{V_2}_{C}$',
             color='darkred',
@@ -427,7 +427,7 @@ class ModelResultsVisualizator:
             linewidth=1.25
         )
         ax2.plot(
-            np.arange(1, len(val_metric_to_plot)),
+            x_to_plot,
             val_metric_to_plot[1:],
             label="Validation datasets combined: " + r'$\rm D^{V}_{C}$',
             color='darkgreen',
@@ -436,14 +436,61 @@ class ModelResultsVisualizator:
         )
         ax2.set_ylabel("Validation Metrics", fontsize=16, color='green')
         ax2.tick_params(axis='y', labelsize=14, labelcolor='green')
+        ax2.set_yscale("log")
+        ax2.set_ylim(1e-4, 1e-1)
 
         # Legends
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=16)
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=14)
 
-        fig.suptitle(title, x=0.35, y=0.99, fontsize=20)
+        fig.suptitle(title, x=0.35, y=0.975, fontsize=16)
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.png') 
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_training_process.pdf') 
-        plt.show()
+        plt.close(fig)
+
+    def plot_tparam(
+            self,
+            tparams: list,
+            global_step: int,
+            current_epoch: int
+        ) -> None:
+
+        x_to_plot = np.arange(1, current_epoch+2)
+
+        tparams = torch.stack(tparams)
+        tparams = tparams.view(current_epoch+2, self.n_sources, -1)
+        tparams_mean_per_source = tparams.mean(dim=2)
+        tparams_low_per_source = torch.quantile(tparams, q=0.16, dim=2)
+        tparams_high_per_source = torch.quantile(tparams, q=0.84, dim=2)
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+        for i in range(self.n_sources):
+            ax.plot(
+                x_to_plot,
+                tparams_mean_per_source[1:, i],
+                label=self.sources_names_to_vis[i],
+                color=self.sources_colors_to_vis[i],
+                alpha=0.9,
+                linewidth=1.25
+            )
+
+            ax.fill_between(
+                x_to_plot,
+                tparams_low_per_source[1:, i], 
+                tparams_high_per_source[1:, i], 
+                fc=self.sources_colors_to_vis[i],
+                alpha=0.1
+            )
+
+        ax.set_ylim(0.25, 3.0)
+        ax.set_ylabel("Temperature of NP-Softmax", fontsize=16, color='black')
+        ax.set_xlabel('Epoch', fontsize=16)
+        ax.tick_params(axis='y', labelsize=14, labelcolor='black')
+        ax.legend(loc="upper left", fontsize=16)
+
+        fig.tight_layout()
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_tparam.png') 
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_tparam.pdf') 
+        plt.close(fig)
