@@ -337,7 +337,7 @@ class ModelResultsVisualizator:
 
                 ########### plot relative difference ###########
                 ax_diff.stairs(
-                    (predicted - truth) / (truth + 1e-5),
+                    (predicted - truth) / truth,
                     self.kNPE_bins_edges,
                     label=self.sources_names_to_vis[k], 
                     color=self.sources_colors_to_vis[k],
@@ -361,7 +361,7 @@ class ModelResultsVisualizator:
             ax_diff.set_yticks([-1, -0.5, 0, 0.5, 1])
             if j == 0:
                 ax_diff.set_ylabel(
-                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{JUNOSW}} + \varepsilon}$",
+                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{JUNOSW}}}$",
                     fontsize=17
                 )
 
@@ -508,7 +508,7 @@ class ModelResultsVisualizator:
         ax.set_ylabel(ylabel, fontsize=15, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-2, 1.0)
+        ax.set_ylim(1e-3, 1e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=15)
 

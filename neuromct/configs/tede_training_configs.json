@@ -1,12 +1,12 @@
 {
     "n_sources": 5,
-    "batch_size": 64,
-    "lr": 2e-3,
+    "batch_size": 32,
+    "lr": 5e-4,
     "output_dim": 800,
     "d_model": 100,
     "nhead": 5,
     "num_encoder_layers": 4,
     "dim_feedforward": 128,
     "dropout": 0.1,
-    "temperature": 2.0
+    "temperature": 1.5
 }
