@@ -1,14 +1,14 @@
-from scipy.stats import norm, poisson
-from scipy.special import erfc
-import numpy as np
-import uproot 
+import multiprocessing
 import pickle
 from copy import deepcopy
-import orsa_fitter as orsa 
-from orsa_model import Conditions, ModelMCT
-import argparse
-import json
-import multiprocessing
+
+import numpy as np
+import uproot
+
+import orsa_fitter as orsa
+
+from neuromct.orsa_fit.orsa_model import Conditions, ModelMCT
+from neuromct.configs import data_configs
 
 import torch.multiprocessing as mp
 mp.set_start_method('spawn', force=True)
@@ -17,14 +17,14 @@ import torch
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
-def load_simulation(n, bins, path = "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events/<el>/testing_data2_5/reco/reco-<n>.root"): #testing_data
+def load_simulation(n, bins, path = "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events/<el>/testing_data2_1/reco/reco-<n>.root"): #testing_data
     centers = (bins[1:] + bins[:-1]) / 2
     out = dict()
 
     for el in ['Co60', 'K40', 'Cs137', 'AmBe', 'AmC']:
         temp_path = path.replace('<el>', el).replace('<n>', str(n))
         reco_default = uproot.open(temp_path)
-        energy = 1.07 * np.array(reco_default['TRec']['m_NPE'].array())
+        energy = 1.07 * np.array(reco_default['TRec']['m_NPE'].array()) / 1000.
         counts, _ = np.histogram(energy, bins=bins)
         out[el] = orsa.spectrum.ReconstructedSpectrum(E=centers, counts = counts, isPDF=False) #hasXS = True
 
@@ -41,7 +41,7 @@ def get_conditions(n):
     LY_list = np.array(LY_list).reshape(-1, 1)
     conditions = np.concatenate([kB_list, fC_list, LY_list], axis=1)
 
-    scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+    scaler = pickle.load(open(f"{data_configs['path_to_models']}/minmax_scaler.pkl", "rb"))
 
     conditions_default_reshaped = np.array(conditions[n]).reshape(1, -1)
     conditions_default_scaled = scaler.transform(conditions_default_reshaped)
@@ -51,7 +51,7 @@ def get_conditions(n):
 
 def run_fit(n_sim):
 
-    bins = np.arange(400, 16401, 20)
+    bins = data_configs['kNPE_bins_edges']
     sniper_spectra = load_simulation(n_sim, bins)
     
     # # SNiPER
@@ -68,36 +68,35 @@ def run_fit(n_sim):
     n5 = data5.counts.sum()
         
     n_samples = 1
-    kind = 'transformer'
-    model_path = 'models/TransformerRegressor.pth'
+    kind = 'tede'
     
     conditions_default = get_conditions(0)
     
-    model1 = ModelMCT(source='Co60', model_type=kind, model_path=model_path, n_samples=n_samples)
+    model1 = ModelMCT(source='Co60', model_type=kind, n_samples=n_samples)
     model1.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model1.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model1.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model1.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n1, group = '1',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n1-5*np.sqrt(n1), 'right':n1+5*np.sqrt(n1)}}))
     
-    model2 = ModelMCT(source='K40', model_type=kind, model_path=model_path, n_samples=n_samples)
+    model2 = ModelMCT(source='K40', model_type=kind, n_samples=n_samples)
     model2.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model2.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model2.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model2.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n2, group = '2',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n2-5*np.sqrt(n2), 'right':n2+5*np.sqrt(n2)}}))
     
-    model3 = ModelMCT(source='Cs137', model_type=kind, model_path=model_path, n_samples=n_samples)
+    model3 = ModelMCT(source='Cs137', model_type=kind, n_samples=n_samples)
     model3.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model3.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model3.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model3.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n3, group = '3',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n3-5*np.sqrt(n3), 'right':n3+5*np.sqrt(n3)}}))
     
-    model4 = ModelMCT(source='AmBe', model_type=kind, model_path=model_path, n_samples=n_samples)
+    model4 = ModelMCT(source='AmBe', model_type=kind, n_samples=n_samples)
     model4.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model4.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model4.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model4.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n4, group = '4',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n4-5*np.sqrt(n4), 'right':n4+5*np.sqrt(n4)}}))
     
-    model5 = ModelMCT(source='AmC', model_type=kind, model_path=model_path, n_samples=n_samples)
+    model5 = ModelMCT(source='AmC', model_type=kind, n_samples=n_samples)
     model5.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model5.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model5.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
@@ -120,11 +119,11 @@ def run_fit(n_sim):
     cf5 = orsa.probability.CostFunction(ll=orsa.probability.ll_binned, data = data5, model = model5, ll_args=dict())
     cf = cf1+cf2+cf3+cf4+cf5
     
-    samples = 5000
+    samples = 2000
     result_mcmc = orsa.fit.emcee(cf, samples, err_scale=1e-2, err_scale_is_relative=True)
     result_mcmc.true_values = true_values
     
-    scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+    scaler = pickle.load(open(f"{data_configs['path_to_models']}/minmax_scaler.pkl", "rb"))
     
     for i in range(16):
         result_mcmc.all_samples[i, :, :3] = scaler.inverse_transform(result_mcmc.all_samples[i, :, :3])
@@ -135,11 +134,11 @@ def run_fit(n_sim):
     discard = samples // 2
     result_mcmc.discard = discard
     
-    orsa.utils.to_file(result_mcmc, f"/storage/fit_results/testing_data2_5/full_results/full_results_{n_sim}.pkl")
+    orsa.utils.to_file(result_mcmc, f"/storage/jmct_paper/fit_results/tede/testing_data2_1/all_samples/all_samples_{n_sim}.pkl")
     
     results = orsa.fit.Results(values=result_mcmc.values, errors=result_mcmc.errors,
                                correlation=result_mcmc.correlation, true_values=result_mcmc.true_values)
-    orsa.utils.to_file(results, f"/storage/fit_results/testing_data2_5/results/results_{n_sim}.pkl")
+    orsa.utils.to_file(results, f"/storage/jmct_paper/fit_results/tede/testing_data2_1/fit_outputs/fit_outputs_{n_sim}.pkl")
 
 max_workers = 50
 trials = 1000

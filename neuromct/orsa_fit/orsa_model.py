@@ -30,7 +30,7 @@ class ModelMCT:
         
         self.model_type = model_type
         self.model = setup(model_type)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = "cpu" #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         if model_type == 'tede':
             self.n_samples = n_samples
