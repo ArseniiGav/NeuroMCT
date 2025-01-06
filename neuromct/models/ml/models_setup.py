@@ -6,10 +6,7 @@ from ...configs import data_configs
 from ...utils import tede_argparse
 # from NF import FlowsModel
 
-# setup the hp and rest
-device = "cpu" #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-def setup(model_type):
+def setup(model_type, device):
     if model_type == 'tede':
         args = tede_argparse()
         model = TEDE(

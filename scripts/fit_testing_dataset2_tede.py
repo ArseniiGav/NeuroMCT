@@ -17,7 +17,7 @@ import torch
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
-def load_simulation(n, bins, path = "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events/<el>/testing_data2_1/reco/reco-<n>.root"): #testing_data
+def load_simulation(n, bins, path = "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events/<el>/testing_data2_2/reco/reco-<n>.root"): #testing_data
     centers = (bins[1:] + bins[:-1]) / 2
     out = dict()
 
@@ -119,7 +119,7 @@ def run_fit(n_sim):
     cf5 = orsa.probability.CostFunction(ll=orsa.probability.ll_binned, data = data5, model = model5, ll_args=dict())
     cf = cf1+cf2+cf3+cf4+cf5
     
-    samples = 2000
+    samples = 5000
     result_mcmc = orsa.fit.emcee(cf, samples, err_scale=1e-2, err_scale_is_relative=True)
     result_mcmc.true_values = true_values
     
@@ -134,13 +134,13 @@ def run_fit(n_sim):
     discard = samples // 2
     result_mcmc.discard = discard
     
-    orsa.utils.to_file(result_mcmc, f"/storage/jmct_paper/fit_results/tede/testing_data2_1/all_samples/all_samples_{n_sim}.pkl")
+    orsa.utils.to_file(result_mcmc, f"/storage/jmct_paper/fit_results/tede/testing_data2_2/all_samples/all_samples_{n_sim}.pkl")
     
     results = orsa.fit.Results(values=result_mcmc.values, errors=result_mcmc.errors,
                                correlation=result_mcmc.correlation, true_values=result_mcmc.true_values)
-    orsa.utils.to_file(results, f"/storage/jmct_paper/fit_results/tede/testing_data2_1/fit_outputs/fit_outputs_{n_sim}.pkl")
+    orsa.utils.to_file(results, f"/storage/jmct_paper/fit_results/tede/testing_data2_2/fit_outputs/fit_outputs_{n_sim}.pkl")
 
-max_workers = 50
+max_workers = 40
 trials = 1000
 if __name__ == '__main__':  
   pool = multiprocessing.Pool(max_workers)

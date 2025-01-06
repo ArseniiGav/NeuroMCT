@@ -19,8 +19,7 @@ class Conditions:
     LY: float
 
 class ModelMCT:
-    def __init__(self, source, model_type, parameters = [], n_samples = 1000, conditions = Conditions(0,0,0)):
-        # TODO: change it for different models, we should build a parser function
+    def __init__(self, source, model_type, device, parameters = [], n_samples = 1000, conditions = Conditions(0,0,0)):
         if isinstance(parameters, dict):
             self.parameters = parameters
         elif isinstance(parameters, np.ndarray) or isinstance(parameters, list):
@@ -29,8 +28,8 @@ class ModelMCT:
                 self.parameters[parameter.label] = parameter
         
         self.model_type = model_type
-        self.model = setup(model_type)
-        self.device = "cpu" #torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.model = setup(model_type, device)
+        self.device = device
 
         if model_type == 'tede':
             self.n_samples = n_samples
@@ -84,7 +83,8 @@ class ModelMCT:
             source = self.source,
             model_type = self.model_type,
             parameters=self.parameters,
-            n_samples=self.n_samples
+            n_samples=self.n_samples,
+            device=self.device
         )
 
 
