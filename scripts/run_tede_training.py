@@ -27,7 +27,7 @@ model_res_visualizator = res_visualizator_setup(data_configs)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 args = tede_argparse()
 
-training_data_transformations = define_transformations("training") # poisson noise + normalization
+training_data_transformations = define_transformations("training") # Poisson noise + normalization
 val_data_transformations = define_transformations("val") # normalization only
 
 train_data = create_dataset(
@@ -60,7 +60,7 @@ lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
 monitor_metric_es = "val_cramer_metric"
 monitor_metric_checkpoint = "val_cramer_metric"
 checkpoint_callback = ModelCheckpoint(save_top_k=1, monitor=monitor_metric_checkpoint, mode="min")
-early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=50)
+early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=100)
 
 tede_model = TEDE(
     n_sources=args.n_sources,
