@@ -55,7 +55,7 @@ val_metric_functions = {
 }
 
 optimizer = optim.AdamW
-lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
+lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
 
 monitor_metric_es = "val_cramer_metric"
 monitor_metric_checkpoint = "val_cramer_metric"

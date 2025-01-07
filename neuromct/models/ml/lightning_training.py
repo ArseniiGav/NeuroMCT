@@ -70,8 +70,8 @@ class TEDELightningTraining(LightningModule):
         return metrics
 
     def configure_optimizers(self):      
-        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.999), weight_decay=1e-4)
-        scheduler = self.lr_scheduler(opt, mode='min', factor=0.9, patience=20, verbose=False) # depends on lr_scheduler. Needs more flexibility
+        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.99), weight_decay=1e-4)
+        scheduler = self.lr_scheduler(opt, T_max=50, eta_min=1e-6, verbose=False) # depends on lr_scheduler. Needs more flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_cramer_metric"}]
 
     def forward(self, params, source_types, t_out=False):

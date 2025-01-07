@@ -1,7 +1,7 @@
 {
     "n_sources": 5,
     "batch_size": 32,
-    "lr": 5e-4,
+    "lr": 1e-4,
     "output_dim": 800,
     "d_model": 100,
     "nhead": 5,
