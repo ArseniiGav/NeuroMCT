@@ -5,3 +5,6 @@ Transformer Encoder-based Density estimator (TEDE):
   <img src="docs/tede.jpg" width="600">
 </div>
 
+<div align="center">
+  <img src="docs/param_emb_block.jpg" width="600">
+</div>
