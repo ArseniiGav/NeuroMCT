@@ -42,8 +42,8 @@ class ModelMCT:
         self.centers = (self.bins[1:] + self.bins[:-1]) / 2
         self.conditions = conditions
         self.set_source(source)
-        self.E_fit_min = 0.0
-        self.E_fit_max = 16.0
+        self.E_fit_min = 0.4
+        self.E_fit_max = 16.4
 
         self.rebin = 1
         self.use_gpu = False
@@ -110,7 +110,7 @@ class ModelMCT:
         if self.model_type == 'tede':
             pred_spectra = self.model(params.to(self.device), source_types.to(self.device))
             counts = pred_spectra.cpu().detach().numpy().squeeze(0)
-            return orsa.spectrum.ReconstructedSpectrum(E = self.centers, counts = counts, isPDF = False)#.norm()
+            return orsa.spectrum.ReconstructedSpectrum(E = self.centers, counts = counts, isPDF = False).norm()
         elif self.model_type == 'nf':
             conditions = np.array([[conditions_obj.kB, conditions_obj.fC, conditions_obj.LY]])
             conditions = torch.Tensor(conditions).to(self.device)

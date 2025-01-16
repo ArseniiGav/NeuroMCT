@@ -60,7 +60,7 @@ lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
 monitor_metric_es = "val_cramer_metric"
 monitor_metric_checkpoint = "val_cramer_metric"
 checkpoint_callback = ModelCheckpoint(save_top_k=1, monitor=monitor_metric_checkpoint, mode="min")
-early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=100)
+early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=200)
 
 tede_model = TEDE(
     n_sources=args.n_sources,
@@ -85,7 +85,7 @@ tede_model_lightning_training = TEDELightningTraining(
 )
 
 trainer_tede = Trainer(
-    max_epochs=1000,
+    max_epochs=1200,
     deterministic=False,
     accelerator="gpu",
     devices="auto",

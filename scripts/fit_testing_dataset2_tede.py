@@ -17,7 +17,7 @@ import torch
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
-def load_simulation(n, bins, path = "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events/<el>/testing_data2_2/reco/reco-<n>.root"): #testing_data
+def load_simulation(n, bins, path = "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events/<el>/testing_data2_1/reco/reco-<n>.root"): #testing_data
     centers = (bins[1:] + bins[:-1]) / 2
     out = dict()
 
@@ -72,31 +72,31 @@ def run_fit(n_sim):
     
     conditions_default = get_conditions(0)
     
-    model1 = ModelMCT(source='Co60', model_type=kind, n_samples=n_samples)
+    model1 = ModelMCT(source='Co60', model_type=kind, n_samples=n_samples, device='cpu')
     model1.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model1.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model1.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model1.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n1, group = '1',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n1-5*np.sqrt(n1), 'right':n1+5*np.sqrt(n1)}}))
     
-    model2 = ModelMCT(source='K40', model_type=kind, n_samples=n_samples)
+    model2 = ModelMCT(source='K40', model_type=kind, n_samples=n_samples, device='cpu')
     model2.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model2.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model2.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model2.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n2, group = '2',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n2-5*np.sqrt(n2), 'right':n2+5*np.sqrt(n2)}}))
     
-    model3 = ModelMCT(source='Cs137', model_type=kind, n_samples=n_samples)
+    model3 = ModelMCT(source='Cs137', model_type=kind, n_samples=n_samples, device='cpu')
     model3.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model3.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model3.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model3.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n3, group = '3',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n3-5*np.sqrt(n3), 'right':n3+5*np.sqrt(n3)}}))
     
-    model4 = ModelMCT(source='AmBe', model_type=kind, n_samples=n_samples)
+    model4 = ModelMCT(source='AmBe', model_type=kind, n_samples=n_samples, device='cpu')
     model4.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model4.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model4.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
     model4.add_parameter(orsa.model.NormalizationParameter(label = 'N',   value = n4, group = '4',    generator = orsa.generator.reactor('HM', True, True),   is_oscillated=False, has_duty=True,  error = np.inf,  formatted_label = r'$N_\mathrm{evts}$', prior = {'flat': {'left':n4-5*np.sqrt(n4), 'right':n4+5*np.sqrt(n4)}}))
     
-    model5 = ModelMCT(source='AmC', model_type=kind, n_samples=n_samples)
+    model5 = ModelMCT(source='AmC', model_type=kind, n_samples=n_samples, device='cpu')
     model5.add_parameter(orsa.model.DetectorParameter(label = 'kB', value = conditions_default.kB, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$k_B$'))
     model5.add_parameter(orsa.model.DetectorParameter(label = 'fC', value = conditions_default.fC, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$f_C$'))
     model5.add_parameter(orsa.model.DetectorParameter(label = 'LY', value = conditions_default.LY, group = '', error = np.inf,   prior = {'flat': {'left':0, 'right':1}},   formatted_label = r'$L.Y.$'))
@@ -134,13 +134,13 @@ def run_fit(n_sim):
     discard = samples // 2
     result_mcmc.discard = discard
     
-    orsa.utils.to_file(result_mcmc, f"/storage/jmct_paper/fit_results/tede/testing_data2_2/all_samples/all_samples_{n_sim}.pkl")
+    orsa.utils.to_file(result_mcmc, f"/storage/jmct_paper/fit_results/tede/testing_data2_1/all_samples/all_samples_{n_sim}.pkl")
     
     results = orsa.fit.Results(values=result_mcmc.values, errors=result_mcmc.errors,
                                correlation=result_mcmc.correlation, true_values=result_mcmc.true_values)
-    orsa.utils.to_file(results, f"/storage/jmct_paper/fit_results/tede/testing_data2_2/fit_outputs/fit_outputs_{n_sim}.pkl")
+    orsa.utils.to_file(results, f"/storage/jmct_paper/fit_results/tede/testing_data2_1/fit_outputs/fit_outputs_{n_sim}.pkl")
 
-max_workers = 40
+max_workers = 50
 trials = 1000
 if __name__ == '__main__':  
   pool = multiprocessing.Pool(max_workers)
