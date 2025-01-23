@@ -1,15 +1,22 @@
-import numpy as np
+from lzma import open as lzma_open
+
+from pickle import dump as pickle_dump
+from torch import tensor, int64, float64
+from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
-from torch import tensor, int64
+import numpy as np
 
 from neuromct.configs import data_configs
+from neuromct.fit import SamplerMH, LogLikelihood
 from neuromct.models.ml import setup
-from neuromct.fit import SamplerMH, SamplerNested, LogLikelihood
 
 sources_all = ('cs137', 'k40', 'co60', 'ambe', 'amc',)
 source_to_number = dict(
         [(source_name, source_number) for source_number, source_name in enumerate(sources_all)]
         )
+
+def sort_sources_by_number(sources):
+    return sorted(sources, key=lambda name: source_to_number[name])
 
 def read_data(data_path, sources):
     edges = data_configs['kNPE_bins_edges']
@@ -22,14 +29,14 @@ def read_data(data_path, sources):
     return data_dict
 
 class Model:
-    def __init__(self, source, integral, model_type = 'tede', device = 'cpu', path_to_models=None):
+    def __init__(self, source, integral, model_type='tede', device='cpu', path_to_models=None):
         self._source_n = source_to_number[source]
         self._integral = integral
         self._model = setup(model_type, device, path_to_models)
 
     def __call__(self, pars):
         kb, fc, ly, n = pars
-        nl_pars = torch.tensor([kb, fc, ly], dtype=torch.float64).unsqueeze(0)
+        nl_pars = tensor([kb, fc, ly], dtype=float64).unsqueeze(0)
         out = self._model(
                 nl_pars, tensor([[self._source_n]], dtype=int64)
                 ).detach().numpy()[0] * self._integral
@@ -50,10 +57,13 @@ def perform_mh_fit(likelihood_fn, opts):
     initial_pos = [0.5, 0.5, 0.5] + [1] * n_sources
     cov = np.diag([1e-5, 1e-5, 1e-5] + [5e-5] * n_sources)
     rng = np.random.default_rng(opts.seed)
-    sampler = SamplerMH(likelihood_fn, initial_pos, cov, rng)
-    sampler.estimate_covariance(10, 1000, 10000)
+    par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
+
+    sampler = SamplerMH(likelihood_fn, initial_pos, cov, par_names, rng)
+    sampler.estimate_covariance(10, 100, 1000)
     sampler.sample(opts.n_samples)
-    sampler.save(opts.output)
+    outname = f"mcmc-mh-{'-'.join(opts.sources)}"
+    sampler.save(opts.output, outname, metadata=vars(opts))
 
 def perform_ultranest_fit(likelihood_fn, opts):
     def prior_transform(cube):
@@ -62,15 +72,23 @@ def perform_ultranest_fit(likelihood_fn, opts):
         for i in range(3, len(cube)):
             params[i] = cube[i] * (n_hi - n_lo) + n_lo
         return params
-    param_names = ['kb', 'fc', 'ly'] + list(opts.sources)
-    sampler = ReactiveNestedSampler(param_names, likelihood_fn, prior_transform)
-    result = sampler.run()
+    par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
+
+    sampler = ReactiveNestedSampler(par_names, likelihood_fn, prior_transform)
+    result = sampler.run(
+            viz_callback=False,
+            show_status=False,
+            )
+    result['metadata'] = vars(opts)
+    outname = f"ultranest-{'-'.join(opts.sources)}"
+    with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
+        pickle_dump(result, file)
 
 def main(opts):
     data_dict = read_data(opts.data, opts.sources)
     log_likelihoods = list()
     for source in opts.sources:
-        model = Model(source, np.sum(data_dict[source]), opts.model_path)
+        model = Model(source, np.sum(data_dict[source]), path_to_models=opts.model_path)
         log_likelihoods.append(LogLikelihood(data_dict[source], model))
     log_likelihood_sum = log_likelihood_sum_wrapper(log_likelihoods)
 
@@ -92,4 +110,6 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', default='./output', help='Path to store the resulting chain')
     parser.add_argument('-mpath','--model-path', default=None, help='Path to models')
     parser.add_argument('-s', '--seed', default=None, type=int, help='Seed to use for pseudorandom')
-    main(parser.parse_args())
+    opts = parser.parse_args()
+    opts.sources = sort_sources_by_number(opts.sources)
+    main(opts)
