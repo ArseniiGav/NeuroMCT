@@ -37,3 +37,5 @@ def setup(model_type, device, path_to_models=None):
         nf_model.eval()
 
         return nf_model
+    else:
+        raise ValueError("Model type should be 'tede' or 'nf'")
