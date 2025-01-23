@@ -4,7 +4,7 @@ from ...configs import data_configs
 from ...utils import tede_argparse
 # from NF import FlowsModel
 
-def setup(model_type, device):
+def setup(model_type, device, path_to_models=None):
     if model_type == 'tede':
         args = tede_argparse()
         model = TEDE(
@@ -17,8 +17,10 @@ def setup(model_type, device):
             dropout=args.dropout,
             temperature=args.temperature
         ).double().to(device)
-        
-        model.load_state_dict(torch.load(f"{data_configs['path_to_models']}/tede_model.pth", map_location=device))
+
+        path_to_models = path_to_models if path_to_models is not None \
+                else data_configs['path_to_models']
+        model.load_state_dict(torch.load(f"{path_to_models}/tede_model.pth", map_location=device))
         model.eval()
         return model
 
