@@ -1,7 +1,7 @@
 from lzma import open as lzma_open
 
 from pickle import dump as pickle_dump
-from torch import tensor, int64, float64
+from torch import tensor, int64, float64, set_num_threads, set_num_interop_threads
 from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
 import numpy as np
@@ -9,6 +9,9 @@ import numpy as np
 from neuromct.configs import data_configs
 from neuromct.fit import SamplerMH, LogLikelihood
 from neuromct.models.ml import setup
+
+set_num_threads(1)
+set_num_interop_threads(1)
 
 sources_all = ('cs137', 'k40', 'co60', 'ambe', 'amc',)
 source_to_number = dict(
@@ -60,7 +63,7 @@ def perform_mh_fit(likelihood_fn, opts):
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
 
     sampler = SamplerMH(likelihood_fn, initial_pos, cov, par_names, rng)
-    sampler.estimate_covariance(10, 100, 1000)
+    sampler.estimate_covariance(10, 1000, 10000)
     sampler.sample(opts.n_samples)
     outname = f"mcmc-mh-{'-'.join(opts.sources)}"
     sampler.save(opts.output, outname, metadata=vars(opts))
@@ -100,7 +103,7 @@ def main(opts):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--n-samples', type=int, default=1e6, help='Number of samples to produce')
+    parser.add_argument('--n-samples', type=int, default=500000, help='Number of samples to produce')
     parser.add_argument('--sources', required=True,
                         choices=sources_all,
                         nargs='+', help='Which sources to use')
