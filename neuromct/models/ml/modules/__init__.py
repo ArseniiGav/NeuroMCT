@@ -1,1 +1,1 @@
-from .modules import TSoftmax
+from .modules import Entmax
