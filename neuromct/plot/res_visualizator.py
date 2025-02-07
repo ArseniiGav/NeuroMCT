@@ -491,7 +491,7 @@ class ModelResultsVisualizator:
         ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 5e-1)
+        ax.set_ylim(1e-3, 2e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=15)
 
@@ -533,15 +533,15 @@ class ModelResultsVisualizator:
                 val_metrics_to_plot[val_metric_name][1:],
                 label=label,
                 color=color,
-                alpha=1.0,
-                linewidth=2.0
+                alpha=0.9,
+                linewidth=1.5
             )
         title = title[:-2] # remove "; " at the end
 
         ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 5e-1)
+        ax.set_ylim(1e-3, 2e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=16)
 

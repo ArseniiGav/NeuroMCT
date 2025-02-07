@@ -20,7 +20,8 @@ data_configs = {
     "path_to_plots": "/storage/jmct_paper/plots",
     "path_to_processed_data": "/storage/jmct_paper/processed_data", 
     "path_to_raw_data": "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events",
-
+    "path_to_optuna_results": "/storage/jmct_paper/results/tede_hyperopt",
+    
     # sources' configs
     "n_sources": 5,
     "sources": sources,
