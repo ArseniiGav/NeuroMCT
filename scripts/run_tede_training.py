@@ -32,13 +32,25 @@ training_data_transformations = define_transformations("training")
 # normalization only
 val_data_transformations = define_transformations("val") 
 
+
 train_data = create_dataset(
-    "training", path_to_processed_data, training_data_transformations)
-val1_data = create_dataset("val1", path_to_processed_data, val_data_transformations)
+    "training", 
+    path_to_processed_data, 
+    training_data_transformations
+)
+val1_data = create_dataset(
+    "val1", 
+    path_to_processed_data, 
+    val_data_transformations
+)
 val2_data = []
 for i in range(3):
     val2_i_data = create_dataset(
-        f"val2_{i+1}", path_to_processed_data, val_data_transformations, val2_rates=True)
+        f"val2_{i+1}", 
+        path_to_processed_data, 
+        val_data_transformations, 
+        val2_rates=True
+    )
     val2_data.append(val2_i_data)
 val2_data = ConcatDataset(val2_data)
 
@@ -64,7 +76,8 @@ val2_loader = DataLoader(
     pin_memory=True
 )
 
-kl_div = GeneralizedKLDivLoss(log_input=False, log_target=False, reduction='batchmean')
+kl_div = GeneralizedKLDivLoss(
+    log_input=False, log_target=False, reduction='batchmean')
 wasserstein_distance = LpNormDistance(p=1) # Wasserstein distance
 cramer_distance = LpNormDistance(p=2) # Cramér-von Mises distance
 ks_distance = LpNormDistance(p=torch.inf) # Kolmogorov-Smirnov distance

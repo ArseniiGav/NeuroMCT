@@ -68,17 +68,28 @@ training_data_transformations = define_transformations("training")
 val_data_transformations = define_transformations("val") 
 
 train_data = create_dataset(
-    "training", path_to_processed_data, training_data_transformations)
+    "training", 
+    path_to_processed_data, 
+    training_data_transformations
+)
 val1_data = create_dataset(
-    "val1", path_to_processed_data, val_data_transformations)
+    "val1", 
+    path_to_processed_data, 
+    val_data_transformations
+)
 val2_data = []
 for i in range(3):
     val2_i_data = create_dataset(
-        f"val2_{i+1}", path_to_processed_data, val_data_transformations, val2_rates=True)
+        f"val2_{i+1}", 
+        path_to_processed_data, 
+        val_data_transformations, 
+        val2_rates=True
+    )
     val2_data.append(val2_i_data)
 val2_data = ConcatDataset(val2_data)
 
-kl_div = GeneralizedKLDivLoss(log_input=False, log_target=False, reduction='batchmean')
+kl_div = GeneralizedKLDivLoss(
+    log_input=False, log_target=False, reduction='batchmean')
 wasserstein_distance = LpNormDistance(p=1) # Wasserstein distance
 cramer_distance = LpNormDistance(p=2) # Cramér-von Mises distance
 ks_distance = LpNormDistance(p=torch.inf) # Kolmogorov-Smirnov distance
@@ -96,7 +107,9 @@ early_stopping_callback = EarlyStopping(
 
 def objective(trial):
     # Hyperparameter search space
-    params = {
+    dependent_params = {}
+
+    common_params = {
         'd_model': trial.suggest_categorical(
             'd_model', [50, 100, 200, 400]),
         'nhead': trial.suggest_categorical(
@@ -110,9 +123,10 @@ def objective(trial):
         'learning_rate': trial.suggest_float(
             'learning_rate', 1e-5, 1e-2, log=True),
         'optimizer': trial.suggest_categorical(
-            'optimizer', ['Adam', 'AdamW', 'RMSprop']),
+            'optimizer', ['AdamW', 'RMSprop']),
         'lr_scheduler': trial.suggest_categorical(
-            'lr_scheduler', ['ExponentialLR', 'ReduceLROnPlateau', 'CosineAnnealingLR', 'None']),
+            'lr_scheduler', 
+            ['ExponentialLR', 'ReduceLROnPlateau', 'CosineAnnealingLR', 'None']),
         'dropout': trial.suggest_float(
             'dropout', 0.0, 0.5, step=0.05),
         'entmax_alpha': trial.suggest_float(
@@ -121,33 +135,39 @@ def objective(trial):
             'batch_size', [16, 32, 64, 128, 256, 512]),
     }
 
-    if params['scheduler'] == 'ExponentialLR':
-        params['gamma'] = trial.suggest_float(
+    if common_params['scheduler'] == 'ExponentialLR':
+        dependent_params['gamma'] = trial.suggest_float(
             'gamma', 0.80, 0.99, step=0.01)
-    elif params['scheduler'] == 'CosineAnnealingLR':
-        params['T_max'] = trial.suggest_int(
+    elif common_params['scheduler'] == 'CosineAnnealingLR':
+        dependent_params['T_max'] = trial.suggest_int(
             'T_max', 5, 75, step=5)
-    elif params['scheduler'] == 'ReduceLROnPlateau':
-        params['reduction_factor'] = trial.suggest_float(
+    elif common_params['scheduler'] == 'ReduceLROnPlateau':
+        dependent_params['reduction_factor'] = trial.suggest_float(
             'reduction_factor', 0.80, 0.99, step=0.01)
 
-    if params['optimizer'] == 'Adam':
-        optimizer = optim.Adam
-    elif params['optimizer'] == 'RMSprop':
+    common_params['weight_decay'] = trial.suggest_float(
+        'weight_decay', 1e-5, 1e-1, log=True)
+    if common_params['optimizer'] == 'RMSprop':
         optimizer = optim.RMSprop
-    elif params['optimizer'] == 'AdamW':
+        dependent_params['alpha'] = trial.suggest_float(
+            'alpha', 0.9, 0.999, step=0.001)
+    elif common_params['optimizer'] == 'AdamW':
         optimizer = optim.AdamW
-    
-    if params['lr_scheduler'] == 'ExponentialLR':
+        dependent_params['beta1'] = trial.suggest_float(
+            'beta1', 0.5, 0.95, step=0.01)
+        dependent_params['beta2'] = trial.suggest_float(
+            'beta2', 0.9, 0.999, step=0.001)
+
+    if common_params['lr_scheduler'] == 'ExponentialLR':
         lr_scheduler = optim.lr_scheduler.ExponentialLR
-    elif params['lr_scheduler'] == 'ReduceLROnPlateau': 
+    elif common_params['lr_scheduler'] == 'ReduceLROnPlateau': 
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
-    elif params['lr_scheduler'] == 'CosineAnnealingLR': 
+    elif common_params['lr_scheduler'] == 'CosineAnnealingLR': 
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
 
     train_loader = DataLoader(
         train_data, 
-        batch_size=params['batch_size'], 
+        batch_size=common_params['batch_size'], 
         shuffle=True, 
         num_workers=20, 
         pin_memory=True
@@ -171,13 +191,13 @@ def objective(trial):
     tede_model = TEDE(
         n_sources=data_configs['n_sources'],
         output_dim=data_configs['n_bins'],
-        d_model=params['d_model'],
-        activation=params['activation'],
-        nhead=params['nhead'],
-        num_encoder_layers=params['num_encoder_layers'],
-        dim_feedforward=params['dim_feedforward'],
-        dropout=params['dropout'],
-        entmax_alpha=params['entmax_alpha']
+        d_model=common_params['d_model'],
+        activation=common_params['activation'],
+        nhead=common_params['nhead'],
+        num_encoder_layers=common_params['num_encoder_layers'],
+        dim_feedforward=common_params['dim_feedforward'],
+        dropout=common_params['dropout'],
+        entmax_alpha=common_params['entmax_alpha']
     )
 
     tede_model_lightning_training = TEDELightningTraining(
@@ -186,9 +206,11 @@ def objective(trial):
         val_metric_functions=val_metric_functions,
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
-        lr=params['lr'],
+        lr=common_params['learning_rate'],
         bins_centers=kNPE_bins_centers,
-        model_res_visualizator=model_res_visualizator
+        monitor_metric=monitor_metric,
+        model_res_visualizator=model_res_visualizator,
+        dependent_params=dependent_params
     )
 
     trainer_tede = Trainer(
@@ -208,7 +230,8 @@ def objective(trial):
     )
 
     print(tede_model)
-    print(params)
+    print(common_params)
+    print(dependent_params)
     trainer_tede.fit(
         tede_model_lightning_training,
         train_dataloaders=train_loader,
@@ -218,13 +241,13 @@ def objective(trial):
         ]
     )
 
-    return trainer_tede.callback_metrics['val_cramer_metric'].item()
+    return trainer_tede.callback_metrics[monitor_metric].item()
 
 
 # Create an Optuna study and run optimization
 study = optuna.create_study(
     study_name="my_study",
-    storage=f"sqlite:///{path_to_optuna_results}/seed_{args.seed}/tede_.db",
+    storage=f"sqlite:///{path_to_optuna_results}/seed_{args.seed}/tede_study.db",
     direction='minimize',
     sampler=optuna.samplers.TPESampler(),
     pruner=optuna.pruners.HyperbandPruner(
@@ -232,22 +255,22 @@ study = optuna.create_study(
 )
 study.optimize(objective, n_trials=args.n_trials) 
 
-with open(f'{path_to_optuna_results}/seed_{args.seed}/full_study.pkl', "wb") as f:
+with open(f'{path_to_optuna_results}/seed_{args.seed}/tede_study_output.pkl', "wb") as f:
     pickle.dump(study, f)
 
 best_params = study.best_params
 best_params['seed'] = args.seed
 best_params['best_value'] = study.best_value
 
-with open(f'{path_to_optuna_results}/seed_{args.seed}/best_hparams.pkl', 'wb') as fp:
+with open(f'{path_to_optuna_results}/seed_{args.seed}/tede_best_hparams.pkl', 'wb') as fp:
     pickle.dump(best_params, fp) 
 
 trials_dataframe = study.trials_dataframe()
 trials_dataframe.to_csv(
-    f'{path_to_optuna_results}/seed_{args.seed}/study_trials_dataframe.csv',
+    f'{path_to_optuna_results}/seed_{args.seed}/tede_trials_dataframe.csv',
     index=False
 )
 
-param_importances = optuna.importance.get_param_importances(study)
-with open(f'{path_to_optuna_results}/seed_{args.seed}/param_importances.pkl', 'wb') as fp:
-    pickle.dump(param_importances, fp)  
+hparam_importances = optuna.importance.get_param_importances(study)
+with open(f'{path_to_optuna_results}/seed_{args.seed}/tede_hparam_importances.pkl', 'wb') as fp:
+    pickle.dump(hparam_importances, fp)  
