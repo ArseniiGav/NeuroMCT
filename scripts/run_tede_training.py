@@ -65,12 +65,13 @@ early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", p
 tede_model = TEDE(
     n_sources=args.n_sources,
     output_dim=args.output_dim,
+    activation=args.activation,
     d_model=args.d_model,
     nhead=args.nhead,
     num_encoder_layers=args.num_encoder_layers,
     dim_feedforward=args.dim_feedforward,
     dropout=args.dropout,
-    temperature=args.temperature
+    entmax_alpha=args.entmax_alpha
 )
 
 tede_model_lightning_training = TEDELightningTraining(
@@ -86,7 +87,7 @@ tede_model_lightning_training = TEDELightningTraining(
 
 trainer_tede = Trainer(
     max_epochs=1200,
-    deterministic=False,
+    deterministic=True,
     accelerator="gpu",
     devices="auto",
     precision=64,

@@ -1,13 +1,11 @@
 from dataclasses import dataclass
 import orsa_fitter as orsa 
-import pickle
 import numpy as np
 import torch
 
 from orsa_fitter.model import DetectorParameter, NormalizationParameter
 from ..models.ml.models_setup import setup
 from ..configs import data_configs
-from scipy.signal import savgol_filter
 import copy
 import json
 
@@ -150,7 +148,10 @@ class ModelMCT:
                     f"I do not know what to do with parameter {el} of general class {type(self.parameters[el])}!"
                 )
         
-        return dict(ReconstructedSpectrum = norm*self.build_model(self.conditions))
+        if getEcomp:
+            return dict(ReconstructedSpectrum = norm*self.build_model(self.conditions)), dict(ReconstructedSpectrum = self.E_fit_min), dict(ReconstructedSpectrum = self.E_fit_max)
+        else:
+            return dict(ReconstructedSpectrum = norm*self.build_model(self.conditions))
     
     def get_priors(self):
         return dict()
@@ -189,7 +190,7 @@ class ModelMCT:
         return out
 
     def to_json(self, filename):
-        to_json(self, filename)
+        return to_json(self, filename)
 
 
 

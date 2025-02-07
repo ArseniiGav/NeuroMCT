@@ -203,7 +203,7 @@ class ModelResultsVisualizator:
                     ax[j].add_artist(legend2)
 
                 ax[j].set_title(subplot_title, fontsize=10)
-                ax[j].set_ylim(1e-4, 0.25)
+                ax[j].set_ylim(5e-5, 0.25)
                 ax[j].set_yscale("log")
                 ax[j].set_xlim(0.0, 16.0)
                 
@@ -274,9 +274,9 @@ class ModelResultsVisualizator:
                 legend2 = ax[j].legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=14, loc=(0.31, 0.82))
                 ax[j].add_artist(legend1)
                 ax[j].add_artist(legend2)
-            
+
             ax[j].set_title(subplot_title, fontsize=14)
-            ax[j].set_ylim(1e-5, 0.4)
+            ax[j].set_ylim(5e-6, 0.5)
             ax[j].set_xlim(0.0, 16.0)
             ax[j].set_yscale("log")
             ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
@@ -302,8 +302,8 @@ class ModelResultsVisualizator:
             metric_names: list,
         ) -> None:
         fig, axes = plt.subplots(2, self.params_dim, 
-                                 figsize=(self.params_dim * 6, self.params_dim * 2.5),
-                                 gridspec_kw={'height_ratios': [2, 1], 'hspace': 0.1})
+                                 figsize=(self.params_dim * 6, self.params_dim * 2.25),
+                                 gridspec_kw={'height_ratios': [3, 1], 'hspace': 0.08})
         axes = axes.reshape(2, self.params_dim)
         for j in range(self.params_dim):
             ax_main = axes[0, j]
@@ -337,7 +337,7 @@ class ModelResultsVisualizator:
 
                 ########### plot relative difference ###########
                 ax_diff.stairs(
-                    (predicted - truth) / truth,
+                    (predicted - truth) / torch.sqrt(truth),
                     self.kNPE_bins_edges,
                     label=self.sources_names_to_vis[k], 
                     color=self.sources_colors_to_vis[k],
@@ -351,21 +351,21 @@ class ModelResultsVisualizator:
                     
                     handles, labels = ax_main.get_legend_handles_labels()                
                     legend1 = ax_main.legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=12, loc="upper right",)
-                    legend2 = ax_main.legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=12, loc=(0.27, 0.83))
+                    legend2 = ax_main.legend(handles[5:], labels[5:], frameon=1, ncol=1, fontsize=12, loc=(0.27, 0.825))
                     ax_main.add_artist(legend1)
                     ax_main.add_artist(legend2)
 
             ax_diff.set_xlim(0.0, 16.0)
             ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
-            ax_diff.set_ylim(-1.25, 1.25)
-            ax_diff.set_yticks([-1, -0.5, 0, 0.5, 1])
+            ax_diff.set_ylim(-0.05, 0.05)
+            ax_diff.set_yticks([-0.04, -0.02, 0, 0.02, 0.04])
             if j == 0:
                 ax_diff.set_ylabel(
-                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{f_{\rm{JUNOSW}}}$",
+                    r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{\sqrt{f_{\rm{JUNOSW}}}}$",
                     fontsize=17
                 )
 
-            ax_main.set_ylim(1e-5, 0.4)
+            ax_main.set_ylim(5e-6, 0.5)
             ax_main.set_xlim(0.0, 16.0)
             ax_main.tick_params(labelbottom=False)
             ax_main.set_yscale("log")
@@ -440,7 +440,6 @@ class ModelResultsVisualizator:
             current_epoch: int,
             val_metric_name: str
         ) -> None:
-
         if val_metric_name == "wasserstein":
             title = r"$d^{V_1}_{1}$ " + f"= {val1_metric_value:.4f}; "
             title += r"$d^{V_2}_{1}$ " + f"{val2_metric_value:.4f}; "
@@ -448,12 +447,6 @@ class ModelResultsVisualizator:
             title += f' = {val_metric_value:.4f}'
 
             ylabel = "Wasserstein distance: " + r"$d^{V}_{1}$"
-
-            # label = (r"$d_p = "
-            #          r"\frac{1}{|B|} \sum_{i=1}^{|B|} \sum_{j=1}^{N_b} "
-            #          r"\left| F\left(\mathbf{X}_{i, j}^{\rm{JUNOSW}}\right) - "
-            #          r"F\left(\mathbf{X}_{i, j}^{\rm{TEDE}}\right) \right| "
-            #          r"\Delta x$")
         elif val_metric_name == "cramer":
             title = r"$d^{V_1}_{2}$ " + f"= {val1_metric_value:.4f}; "
             title += r"$d^{V_2}_{2}$ " + f"{val2_metric_value:.4f}; "
@@ -461,12 +454,6 @@ class ModelResultsVisualizator:
             title += f' = {val_metric_value:.4f}'
 
             ylabel = "Cramér-von Mises distance: " + r"$d^{V}_{1}$"
-
-            # label = (r"$d_2 = "
-            #          r"\frac{1}{|B|} \sum_{i=1}^{|B|} \sqrt{"
-            #          r"\sum_{j=1}^{N_b} \left( F\left(\mathbf{X}_{i, j}^{\rm{JUNOSW}}\right) - "
-            #          r"F\left(\mathbf{X}_{i, j}^{\rm{TEDE}}\right) \right)^2 "
-            #          r"\Delta x }$")  
         elif val_metric_name == "ks":
             title = r"$d^{V_1}_{\infty}$ " + f"= {val1_metric_value:.4f}; "
             title += r"$d^{V_2}_{\infty}$ " + f"{val2_metric_value:.4f}; "
@@ -475,10 +462,6 @@ class ModelResultsVisualizator:
 
             ylabel = "Kolmogorov-Smirnov distance: " + r"$d^{V}_{\infty}$"
 
-            # label = (r"$d_{\infty} = "
-            #          r"\frac{1}{|B|} \sum_{i=1}^{|B|} \max_{j \in \{1, \dots, N_b\}} "
-            #          r"\left| F\left(\mathbf{X}_{i, j}^{\rm{JUNOSW}}\right) - "
-            #          r"F\left(\mathbf{X}_{i, j}^{\rm{TEDE}}\right) \right| $") 
         x_to_plot = np.arange(1, current_epoch+2)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
@@ -487,7 +470,7 @@ class ModelResultsVisualizator:
             color='royalblue',
             label="Validation dataset №1",
             alpha=0.9,
-            linewidth=1.25
+            linewidth=1.5
         )
         ax.plot(
             x_to_plot,
@@ -495,7 +478,7 @@ class ModelResultsVisualizator:
             label="Validation dataset №2",
             color='darkred',
             alpha=0.9,
-            linewidth=1.25
+            linewidth=1.5
         )
         ax.plot(
             x_to_plot,
@@ -503,12 +486,12 @@ class ModelResultsVisualizator:
             label="Validation datasets average",
             color='darkgreen',
             alpha=0.9,
-            linewidth=1.25
+            linewidth=1.5
         )
-        ax.set_ylabel(ylabel, fontsize=15, color='black')
+        ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 1e-1)
+        ax.set_ylim(1e-3, 5e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=15)
 
@@ -516,4 +499,54 @@ class ModelResultsVisualizator:
         fig.tight_layout()
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_val_metric_{val_metric_name}.png') 
         fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_val_metric_{val_metric_name}.pdf') 
+        plt.close(fig)
+
+    def plot_val_metrics_combined(
+            self,
+            val_metrics_to_plot: dict,
+            val_metric_values: dict,
+            global_step: int,
+            current_epoch: int,
+            val_metric_names: list
+        ) -> None:
+        ylabel = "Validation metrics: " + r"$d^{V}_{p}$"
+        x_to_plot = np.arange(1, current_epoch+2)
+        title = ""
+
+        fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+        for val_metric_name in val_metric_names:
+            if val_metric_name == "wasserstein":
+                color = "indigo"
+                title += r"$d^{V}_{2}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Wasserstein distance: " + r"$d_2^{V}$"
+            elif val_metric_name == "cramer":
+                color = "#3971ac"
+                title += r"$d^{V}_{1}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Cramér-von Mises distance: " + r"$d_1^{V}$"
+            elif val_metric_name == "ks":
+                color = "lightslategrey"
+                title += r"$d^{V}_{\infty}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Kolmogorov-Smirnov distance: " + r"$d_{\infty}^{V}$"
+
+            ax.plot(
+                x_to_plot,
+                val_metrics_to_plot[val_metric_name][1:],
+                label=label,
+                color=color,
+                alpha=1.0,
+                linewidth=2.0
+            )
+        title = title[:-2] # remove "; " at the end
+
+        ax.set_ylabel(ylabel, fontsize=16, color='black')
+        ax.set_xlabel('Epoch', fontsize=16)
+        ax.set_yscale("log")
+        ax.set_ylim(1e-3, 5e-1)
+        ax.tick_params(axis='y', labelsize=14, labelcolor='black')
+        ax.legend(loc="upper right", fontsize=16)
+
+        fig.suptitle(title, x=0.225, y=0.975, fontsize=16)
+        fig.tight_layout()
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_val_metrics.png') 
+        fig.savefig(f'{self.path_to_plots}/tede_training/epoch_{current_epoch}_it_{global_step}_val_metrics.pdf') 
         plt.close(fig)

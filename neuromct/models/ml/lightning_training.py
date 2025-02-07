@@ -74,8 +74,8 @@ class TEDELightningTraining(LightningModule):
         scheduler = self.lr_scheduler(opt, T_max=50, eta_min=1e-6, verbose=False) # depends on lr_scheduler. Needs more flexibility
         return [opt], [{'scheduler': scheduler, 'monitor': "val_cramer_metric"}]
 
-    def forward(self, params, source_types, t_out=False):
-        return self.model(params, source_types, t_out=t_out)
+    def forward(self, params, source_types):
+        return self.model(params, source_types)
 
     def training_step(self, batch):
         spectra_true, params, source_types = batch
@@ -184,6 +184,7 @@ class TEDELightningTraining(LightningModule):
                     global_step=self.global_step,
                     current_epoch=self.current_epoch
                 )
+
                 for name in self.val_metric_names:
                     self.res_visualizator.plot_val_metrics(
                         val1_metrics_to_plot=self.val1_metrics_to_plot[name],
@@ -196,3 +197,11 @@ class TEDELightningTraining(LightningModule):
                         current_epoch=self.current_epoch,
                         val_metric_name=name
                     )
+
+                self.res_visualizator.plot_val_metrics_combined(
+                    val_metrics_to_plot=self.val_metrics_to_plot,
+                    val_metric_values=self.val_metrics_values,
+                    global_step=self.global_step,
+                    current_epoch=self.current_epoch,
+                    val_metric_names=self.val_metric_names
+                )

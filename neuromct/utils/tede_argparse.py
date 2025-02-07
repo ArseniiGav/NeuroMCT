@@ -16,6 +16,8 @@ def tede_argparse():
                         help='The learning rate (default=5e-4)')
     parser.add_argument("--output_dim", type=int, default=800,
                          help='The number of bins that used to describe the spectra (default=800)')
+    parser.add_argument("--activation", type=str, default="relu",
+                         help='Activation function of the hidden layers (Either "relu" or "gelu", default="relu")')
     parser.add_argument("--d_model", type=int, default=128,
                          help='The number of expected features in the input of the encoder layers (default=128)')
     parser.add_argument("--nhead", type=int, default=8,
@@ -25,9 +27,10 @@ def tede_argparse():
     parser.add_argument("--dim_feedforward", type=int, default=32,
                          help='The dimension of the feedforward network model (default=32)')
     parser.add_argument("--dropout", type=float, default=0.1,
-                         help='The dropout value (default=0.1)')
-    parser.add_argument("--temperature", type=float, default=2.0,
-                         help='The temperature parameter for the output Softmax layer (default=2.0)')
+                         help='The dropout value in the Transformer encoder layers (default=0.1)')
+    parser.add_argument("--entmax_alpha", type=float, default=1.25,
+                         help='''The alpha parameter of the Entmax output layer (default=1.25).
+                                 If alpha = 1.0, Softmax is applied.''')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:
