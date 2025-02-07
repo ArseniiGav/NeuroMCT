@@ -24,5 +24,6 @@ setup(
         "setuptools==68.2.2",
         "torch==2.4.0",
         "tqdm==4.65.0",
+        "entmax @ git+https://github.com/deep-spin/entmax.git@master#egg=entmax",
     ],
 )
