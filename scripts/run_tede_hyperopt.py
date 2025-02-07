@@ -224,7 +224,7 @@ def objective(trial):
 # Create an Optuna study and run optimization
 study = optuna.create_study(
     study_name="my_study",
-    storage=f"sqlite:///{path_to_optuna_results}/seed_{args.seed}/example.db",
+    storage=f"sqlite:///{path_to_optuna_results}/seed_{args.seed}/tede_.db",
     direction='minimize',
     sampler=optuna.samplers.TPESampler(),
     pruner=optuna.pruners.HyperbandPruner(
