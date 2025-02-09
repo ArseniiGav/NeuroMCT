@@ -13,6 +13,7 @@ class TEDELightningTraining(LightningModule):
             lr_scheduler: optim.lr_scheduler.LRScheduler,
             lr: float,
             bins_centers: torch.Tensor,
+            monitor_metric: str,
             **kwargs,
         ):
         super(TEDELightningTraining, self).__init__()
@@ -24,6 +25,7 @@ class TEDELightningTraining(LightningModule):
         self.lr_scheduler = lr_scheduler
         self.lr = lr
         self.bins_centers = bins_centers
+        self.monitor_metric = monitor_metric
         
         self.val_metric_names = list(val_metric_functions.keys())
 
@@ -52,6 +54,9 @@ class TEDELightningTraining(LightningModule):
             self.val2_params_to_vis = self.res_visualizator.val2_params_to_vis
             self.val2_source_types_to_vis = self.res_visualizator.val2_source_types_to_vis
 
+        if self.kwargs['dependent_params']:
+            self.dependent_params = self.kwargs['dependent_params']
+
     def _compute_and_log_losses(self, spectra_predict, spectra_true, data_type):
         loss = self.loss_function(spectra_predict, spectra_true)
         self.log(f"{data_type}_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
@@ -69,10 +74,38 @@ class TEDELightningTraining(LightningModule):
             metrics[name] = metric.item()
         return metrics
 
-    def configure_optimizers(self):      
-        opt = self.optimizer(self.parameters(), lr=self.lr, betas=(0.9, 0.99), weight_decay=1e-4)
-        scheduler = self.lr_scheduler(opt, T_max=50, eta_min=1e-6, verbose=False) # depends on lr_scheduler. Needs more flexibility
-        return [opt], [{'scheduler': scheduler, 'monitor': "val_cramer_metric"}]
+    def configure_optimizers(self):
+        if self.optimizer == optim.AdamW:
+            opt = self.optimizer(
+                self.parameters(), 
+                lr=self.lr, 
+                betas=(
+                    self.dependent_params['beta1'], 
+                    self.dependent_params['beta2']
+                ), 
+                weight_decay=self.dependent_params['weight_decay']
+            )    
+        elif self.optimizer == optim.RMSprop:
+            opt = self.optimizer(
+                self.parameters(), 
+                lr=self.lr, 
+                alpha=self.dependent_params['alpha'], 
+                weight_decay=self.dependent_params['weight_decay']
+            )
+        
+        if self.lr_scheduler == optim.lr_scheduler.ExponentialLR:
+            scheduler = self.lr_scheduler(
+                opt, gamma=self.dependent_params['gamma'], verbose=False)
+        elif self.lr_scheduler == optim.lr_scheduler.ReduceLROnPlateau:
+            scheduler = self.lr_scheduler(
+                opt, mode='min', factor=self.dependent_params['reduction_factor'], 
+                patience=20, verbose=False)
+        elif self.lr_scheduler == optim.lr_scheduler.CosineAnnealingLR: 
+            scheduler = self.lr_scheduler(
+                opt, T_max=self.dependent_params['T_max'], 
+                eta_min=1e-6, verbose=False)
+
+        return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
 
     def forward(self, params, source_types):
         return self.model(params, source_types)
