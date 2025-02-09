@@ -1,6 +1,7 @@
 import os
 import argparse
 import pickle
+import json
 
 import torch
 import torch.optim as optim
@@ -29,27 +30,26 @@ parser.add_argument("--n_trials", type=int, default=100,
 parser.add_argument("--accelerator", type=str, default="gpu",
                         help='Device used to train the TEDE model ("cpu" or "gpu", default="gpu").')
 parser.add_argument("--seed", type=int, default=22,
-                        help='Seed to seed everything (default=22).')
+                        help='Seed for reproducibility (default=22).')
+parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
+                        help='''The main validation metric used during the hyperopt search
+                                (i.e., used for the early stopping condition). Can be val_*_metric, 
+                                where * is either "cramer" or "wasserstein", or "ks". 
+                                Default=val_cramer_metric.''')
 args = parser.parse_args()
 
 path_to_models = data_configs['path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_optuna_results = data_configs['path_to_optuna_results']
 
-dirs = [
-    f'{path_to_optuna_results}/seed_{args.seed}',
-    f'{path_to_optuna_results}/seed_{args.seed}/plots', 
-    f'{path_to_optuna_results}/seed_{args.seed}/results', 
-]
-os.makedirs(dirs, exist_ok=True)
-
+os.makedirs(f'{path_to_optuna_results}/seed_{args.seed}', exist_ok=True)
 for run_index in range(args.n_trials):
     os.makedirs(
-        f"{path_to_optuna_results}/seed_{args.seed}/plots/plots_{run_index}", 
+        f"{path_to_optuna_results}/seed_{args.seed}/trial_{run_index}/plots", 
         exist_ok=True
     )
     os.makedirs(
-        f"{path_to_optuna_results}/seed_{args.seed}/results/results_{run_index}", 
+        f"{path_to_optuna_results}/seed_{args.seed}/trial_{run_index}/predictions", 
         exist_ok=True
     )
 
@@ -81,8 +81,8 @@ val2_data = []
 for i in range(3):
     val2_i_data = create_dataset(
         f"val2_{i+1}", 
-        path_to_processed_data, 
-        val_data_transformations, 
+        path_to_processed_data,
+        val_data_transformations,
         val2_rates=True
     )
     val2_data.append(val2_i_data)
@@ -99,13 +99,15 @@ val_metric_functions = {
     "ks": ks_distance
 }
 
-monitor_metric = "val_cramer_metric"
-checkpoint_callback = ModelCheckpoint(
-    save_top_k=1, monitor=monitor_metric, mode="min")
-early_stopping_callback = EarlyStopping(
-    monitor=monitor_metric, mode="min", patience=200)
-
 def objective(trial):
+    checkpoint_callback = ModelCheckpoint(
+        save_top_k=1, monitor=args.monitor_metric, mode="min")
+    early_stopping_callback = EarlyStopping(
+        monitor=args.monitor_metric, mode="min", patience=100)
+
+    # path to save the results of the current trial
+    path_to_savings = f"{path_to_optuna_results}/seed_{args.seed}/trial_{trial.number}"
+
     # Hyperparameter search space
     dependent_params = {}
 
@@ -135,13 +137,13 @@ def objective(trial):
             'batch_size', [16, 32, 64, 128, 256, 512]),
     }
 
-    if common_params['scheduler'] == 'ExponentialLR':
+    if common_params['lr_scheduler'] == 'ExponentialLR':
         dependent_params['gamma'] = trial.suggest_float(
             'gamma', 0.80, 0.99, step=0.01)
-    elif common_params['scheduler'] == 'CosineAnnealingLR':
+    elif common_params['lr_scheduler'] == 'CosineAnnealingLR':
         dependent_params['T_max'] = trial.suggest_int(
             'T_max', 5, 75, step=5)
-    elif common_params['scheduler'] == 'ReduceLROnPlateau':
+    elif common_params['lr_scheduler'] == 'ReduceLROnPlateau':
         dependent_params['reduction_factor'] = trial.suggest_float(
             'reduction_factor', 0.80, 0.99, step=0.01)
 
@@ -164,6 +166,8 @@ def objective(trial):
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
     elif common_params['lr_scheduler'] == 'CosineAnnealingLR': 
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
+    else:
+        lr_scheduler = None
 
     train_loader = DataLoader(
         train_data, 
@@ -192,7 +196,7 @@ def objective(trial):
         n_sources=data_configs['n_sources'],
         output_dim=data_configs['n_bins'],
         d_model=common_params['d_model'],
-        activation=common_params['activation'],
+        activation=common_params['activation_function'],
         nhead=common_params['nhead'],
         num_encoder_layers=common_params['num_encoder_layers'],
         dim_feedforward=common_params['dim_feedforward'],
@@ -207,15 +211,17 @@ def objective(trial):
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
         lr=common_params['learning_rate'],
+        weight_decay=common_params['weight_decay'],
         bins_centers=kNPE_bins_centers,
-        monitor_metric=monitor_metric,
-        model_res_visualizator=model_res_visualizator,
-        dependent_params=dependent_params
+        monitor_metric=args.monitor_metric,
+        res_visualizator=model_res_visualizator,
+        dependent_params=dependent_params,
+        path_to_savings=path_to_savings
     )
 
     trainer_tede = Trainer(
-        max_epochs=1200,
-        deterministic=True,
+        max_epochs=2,
+        deterministic=False,
         accelerator=args.accelerator,
         devices="auto",
         precision=64,
@@ -224,7 +230,7 @@ def objective(trial):
             early_stopping_callback,
             LearningRateMonitor(),
             PyTorchLightningPruningCallback(
-                trial, monitor=monitor_metric), #monitor metric between trials
+                trial, monitor=args.monitor_metric), #monitor metric between trials
         ],
         enable_checkpointing=True,
     )
@@ -236,23 +242,73 @@ def objective(trial):
         tede_model_lightning_training,
         train_dataloaders=train_loader,
         val_dataloaders=[
-        val1_loader,
-        val2_loader,
+            val1_loader,
+            val2_loader,
         ]
     )
 
-    return trainer_tede.callback_metrics[monitor_metric].item()
+    best_tede_model = TEDELightningTraining.load_from_checkpoint(
+        checkpoint_path=checkpoint_callback.best_model_path,
+        model=tede_model,
+        loss_function=kl_div,
+        val_metric_functions=val_metric_functions,
+        optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
+        lr=common_params['learning_rate'],
+        weight_decay=common_params['weight_decay'],
+        bins_centers=kNPE_bins_centers,
+        monitor_metric=args.monitor_metric,
+        res_visualizator=model_res_visualizator,
+        dependent_params=dependent_params,
+        path_to_savings=path_to_savings
+    )
+    torch.save(best_tede_model.model.state_dict(), f"{path_to_savings}/tede_model.pth")
+
+    trial_value = trainer_tede.callback_metrics[args.monitor_metric].item()
+    trial_info = {
+        'common_params': common_params,
+        'dependent_params': dependent_params,
+        'objective_value': trial_value,
+    }
+
+    params_filepath = os.path.join(path_to_savings, f'params_{trial.number}.json')
+    with open(params_filepath, 'w') as f:
+        json.dump(trial_info, f, indent=6)
+
+    return trial_value
 
 
 # Create an Optuna study and run optimization
 study = optuna.create_study(
-    study_name="my_study",
+    study_name="tede_hp_optimization",
     storage=f"sqlite:///{path_to_optuna_results}/seed_{args.seed}/tede_study.db",
     direction='minimize',
-    sampler=optuna.samplers.TPESampler(),
+    load_if_exists=True,
+    sampler=optuna.samplers.TPESampler(seed=args.seed),
     pruner=optuna.pruners.HyperbandPruner(
         min_resource=50, max_resource="auto", reduction_factor=3),
 )
+
+# initial hyperparameters
+initial_params = {
+    'd_model': 100,
+    'nhead': 5,
+    'num_encoder_layers': 4,
+    'dim_feedforward': 128,
+    'activation_function': 'relu',
+    'learning_rate': 1e-4,
+    'optimizer': 'AdamW',
+    'lr_scheduler': 'CosineAnnealingLR',
+    'dropout': 0.1,
+    'entmax_alpha': 1.0,
+    'batch_size': 32,
+    'weight_decay': 1e-4,
+    'T_max': 50,
+    'beta1': 0.9,
+    'beta2': 0.99,
+}
+
+study.enqueue_trial(initial_params)
 study.optimize(objective, n_trials=args.n_trials) 
 
 with open(f'{path_to_optuna_results}/seed_{args.seed}/tede_study_output.pkl', "wb") as f:

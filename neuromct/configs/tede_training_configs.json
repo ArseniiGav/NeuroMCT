@@ -10,5 +10,6 @@
     "dim_feedforward": 128,
     "dropout": 0.1,
     "entmax_alpha": 1.05,
-    "accelerator": "gpu"
+    "accelerator": "gpu",
+    "monitor_metric": "val_cramer_metric"
 }

@@ -17,7 +17,6 @@ n_bins = bins.shape[0] - 1
 data_configs = {
     # paths' configs
     "path_to_models": "/storage/jmct_paper/saved_models", 
-    "path_to_plots": "/storage/jmct_paper/plots",
     "path_to_processed_data": "/storage/jmct_paper/processed_data", 
     "path_to_raw_data": "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events",
     "path_to_optuna_results": "/storage/jmct_paper/results/tede_hyperopt",
@@ -29,6 +28,7 @@ data_configs = {
     "sources_colors_to_vis": sources_colors_to_vis,
 
     # params for plots configs
+    "plot_every_n_steps": 10,
     "n_params_values_to_vis": 4,
 
     "params_values_to_vis_training": torch.tensor(

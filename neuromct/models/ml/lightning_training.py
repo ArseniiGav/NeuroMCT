@@ -12,6 +12,7 @@ class TEDELightningTraining(LightningModule):
             optimizer: optim.Optimizer,
             lr_scheduler: optim.lr_scheduler.LRScheduler,
             lr: float,
+            weight_decay: float,
             bins_centers: torch.Tensor,
             monitor_metric: str,
             **kwargs,
@@ -24,12 +25,20 @@ class TEDELightningTraining(LightningModule):
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.lr = lr
+        self.weight_decay = weight_decay
         self.bins_centers = bins_centers
         self.monitor_metric = monitor_metric
-        
         self.val_metric_names = list(val_metric_functions.keys())
 
         self.kwargs = kwargs
+        if self.kwargs['path_to_savings']:
+            self.path_to_savings = self.kwargs['path_to_savings']
+            self.path_to_plot_savings = self.path_to_savings + "/plots"
+            self.path_to_predictions_savings = self.path_to_savings + "/predictions"
+
+        if self.kwargs['dependent_params']:
+            self.dependent_params = self.kwargs['dependent_params']
+
         if self.kwargs['res_visualizator']:
             self.val1_metrics_to_plot = {key: [] for key in self.val_metric_names}
             self.val2_metrics_to_plot = {key: [] for key in self.val_metric_names}
@@ -37,6 +46,7 @@ class TEDELightningTraining(LightningModule):
             self.train_loss_to_plot = []
 
             self.res_visualizator = kwargs['res_visualizator']
+            self.plot_every_n_steps = self.res_visualizator.plot_every_n_steps
 
             training_data_to_vis = self.res_visualizator.training_data_to_vis
             self.training_spectra_to_vis = training_data_to_vis[0]
@@ -54,8 +64,14 @@ class TEDELightningTraining(LightningModule):
             self.val2_params_to_vis = self.res_visualizator.val2_params_to_vis
             self.val2_source_types_to_vis = self.res_visualizator.val2_source_types_to_vis
 
-        if self.kwargs['dependent_params']:
-            self.dependent_params = self.kwargs['dependent_params']
+            # backup for the chosen tr and val1 data
+            torch.save(training_data_to_vis, f'{self.path_to_savings}/training_data_to_vis.pt')
+            torch.save(self.training_params_to_vis_transformed, 
+                       f'{self.path_to_savings}/training_params_to_vis_transformed.pt')
+
+            torch.save(val1_data_to_vis, f'{self.path_to_savings}/val1_data_to_vis.pt')
+            torch.save(self.val1_params_to_vis_transformed, 
+                       f'{self.path_to_savings}/val1_params_to_vis_transformed.pt')
 
     def _compute_and_log_losses(self, spectra_predict, spectra_true, data_type):
         loss = self.loss_function(spectra_predict, spectra_true)
@@ -83,29 +99,31 @@ class TEDELightningTraining(LightningModule):
                     self.dependent_params['beta1'], 
                     self.dependent_params['beta2']
                 ), 
-                weight_decay=self.dependent_params['weight_decay']
+                weight_decay=self.weight_decay
             )    
         elif self.optimizer == optim.RMSprop:
             opt = self.optimizer(
                 self.parameters(), 
                 lr=self.lr, 
                 alpha=self.dependent_params['alpha'], 
-                weight_decay=self.dependent_params['weight_decay']
+                weight_decay=self.weight_decay
             )
         
-        if self.lr_scheduler == optim.lr_scheduler.ExponentialLR:
-            scheduler = self.lr_scheduler(
-                opt, gamma=self.dependent_params['gamma'], verbose=False)
-        elif self.lr_scheduler == optim.lr_scheduler.ReduceLROnPlateau:
-            scheduler = self.lr_scheduler(
-                opt, mode='min', factor=self.dependent_params['reduction_factor'], 
-                patience=20, verbose=False)
-        elif self.lr_scheduler == optim.lr_scheduler.CosineAnnealingLR: 
-            scheduler = self.lr_scheduler(
-                opt, T_max=self.dependent_params['T_max'], 
-                eta_min=1e-6, verbose=False)
-
-        return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
+        if self.lr_scheduler == None:
+            return [opt]
+        else:
+            if self.lr_scheduler == optim.lr_scheduler.ExponentialLR:
+                scheduler = self.lr_scheduler(
+                    opt, gamma=self.dependent_params['gamma'], verbose=False)
+            elif self.lr_scheduler == optim.lr_scheduler.ReduceLROnPlateau:
+                scheduler = self.lr_scheduler(
+                    opt, mode='min', factor=self.dependent_params['reduction_factor'], 
+                    patience=20, verbose=False)
+            elif self.lr_scheduler == optim.lr_scheduler.CosineAnnealingLR: 
+                scheduler = self.lr_scheduler(
+                    opt, T_max=self.dependent_params['T_max'], 
+                    eta_min=1e-6, verbose=False)
+            return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
 
     def forward(self, params, source_types):
         return self.model(params, source_types)
@@ -146,7 +164,10 @@ class TEDELightningTraining(LightningModule):
     def on_train_epoch_end(self):
         if self.kwargs['res_visualizator']:
             train_loss_value = self.trainer.callback_metrics["training_loss"].item()
-            if self.global_step > 0:
+            condition_to_plot = (
+                self.global_step > 0 and self.current_epoch % self.plot_every_n_steps == 0
+                ) or (self.trainer.should_stop) or (self.trainer.max_epochs == self.current_epoch + 1)
+            if condition_to_plot:
                 self.eval()
                 with torch.no_grad():
                     training_spectra_pdfs_to_vis = []
@@ -172,6 +193,20 @@ class TEDELightningTraining(LightningModule):
                     ).detach().cpu()
                 self.train()
 
+                # save predictions
+                torch.save(
+                    training_spectra_pdfs_to_vis, 
+                    f'{self.path_to_predictions_savings}/epoch_{self.current_epoch}_it_{self.global_step}_tr.pt'
+                )
+                torch.save(
+                    val1_spectra_pdfs_to_vis, 
+                    f'{self.path_to_predictions_savings}/epoch_{self.current_epoch}_it_{self.global_step}_v1.pt'
+                )
+                torch.save(
+                    val2_spectra_pdfs_to_vis, 
+                    f'{self.path_to_predictions_savings}/epoch_{self.current_epoch}_it_{self.global_step}_v2.pt'
+                )
+
                 self.res_visualizator.plot_spectra(
                     spectra_predicted_to_vis=training_spectra_pdfs_to_vis,
                     spectra_true_to_vis=self.training_spectra_to_vis,
@@ -179,7 +214,8 @@ class TEDELightningTraining(LightningModule):
                     current_epoch=self.current_epoch,
                     global_step=self.global_step,
                     metric_value=train_loss_value,
-                    dataset_type='training'
+                    dataset_type='training',
+                    path_to_save=self.path_to_plot_savings
                 )
 
                 self.res_visualizator.plot_spectra(
@@ -190,7 +226,8 @@ class TEDELightningTraining(LightningModule):
                     global_step=self.global_step,
                     metric_value=self.val1_metrics_values,
                     dataset_type='val1',
-                    metric_names=self.val_metric_names
+                    metric_names=self.val_metric_names,
+                    path_to_save=self.path_to_plot_savings
                 )
 
                 self.res_visualizator.plot_rates(
@@ -199,7 +236,8 @@ class TEDELightningTraining(LightningModule):
                     current_epoch=self.current_epoch,
                     global_step=self.global_step,
                     metric_value=self.val2_metrics_values,
-                    metric_names=self.val_metric_names
+                    metric_names=self.val_metric_names,
+                    path_to_save=self.path_to_plot_savings
                 )
 
                 self.res_visualizator.plot_rates_with_rel_error(
@@ -208,33 +246,44 @@ class TEDELightningTraining(LightningModule):
                     current_epoch=self.current_epoch,
                     global_step=self.global_step,
                     metric_value=self.val2_metrics_values,
-                    metric_names=self.val_metric_names
+                    metric_names=self.val_metric_names,
+                    path_to_save=self.path_to_plot_savings
                 )
 
-                self.res_visualizator.plot_training_process(
-                    train_loss_to_plot=self.train_loss_to_plot,
-                    train_loss_value=train_loss_value,
-                    global_step=self.global_step,
-                    current_epoch=self.current_epoch
-                )
-
-                for name in self.val_metric_names:
-                    self.res_visualizator.plot_val_metrics(
-                        val1_metrics_to_plot=self.val1_metrics_to_plot[name],
-                        val2_metrics_to_plot=self.val2_metrics_to_plot[name],
-                        val_metrics_to_plot=self.val_metrics_to_plot[name],
-                        val1_metric_value=self.val1_metrics_values[name],
-                        val2_metric_value=self.val2_metrics_values[name],
-                        val_metric_value=self.val_metrics_values[name],
+                if self.trainer.should_stop or self.trainer.max_epochs == self.current_epoch + 1:
+                    self.res_visualizator.plot_training_process(
+                        train_loss_to_plot=self.train_loss_to_plot,
+                        train_loss_value=train_loss_value,
                         global_step=self.global_step,
                         current_epoch=self.current_epoch,
-                        val_metric_name=name
+                        path_to_save=self.path_to_plot_savings
                     )
 
-                self.res_visualizator.plot_val_metrics_combined(
-                    val_metrics_to_plot=self.val_metrics_to_plot,
-                    val_metric_values=self.val_metrics_values,
-                    global_step=self.global_step,
-                    current_epoch=self.current_epoch,
-                    val_metric_names=self.val_metric_names
-                )
+                    for name in self.val_metric_names:
+                        self.res_visualizator.plot_val_metrics(
+                            val1_metrics_to_plot=self.val1_metrics_to_plot[name],
+                            val2_metrics_to_plot=self.val2_metrics_to_plot[name],
+                            val_metrics_to_plot=self.val_metrics_to_plot[name],
+                            val1_metric_value=self.val1_metrics_values[name],
+                            val2_metric_value=self.val2_metrics_values[name],
+                            val_metric_value=self.val_metrics_values[name],
+                            global_step=self.global_step,
+                            current_epoch=self.current_epoch,
+                            val_metric_name=name,
+                            path_to_save=self.path_to_plot_savings
+                        )
+
+                    self.res_visualizator.plot_val_metrics_combined(
+                        val_metrics_to_plot=self.val_metrics_to_plot,
+                        val_metric_values=self.val_metrics_values,
+                        global_step=self.global_step,
+                        current_epoch=self.current_epoch,
+                        val_metric_names=self.val_metric_names,
+                        path_to_save=self.path_to_plot_savings
+                    )
+
+                # save the metrics and the train loss
+                torch.save(self.train_loss_to_plot, f'{self.path_to_savings}/train_loss.pt')
+                torch.save(self.val1_metrics_to_plot, f'{self.path_to_savings}/val1_metrics.pt')
+                torch.save(self.val2_metrics_to_plot, f'{self.path_to_savings}/val2_metrics.pt')
+                torch.save(self.val_metrics_to_plot, f'{self.path_to_savings}/val_metrics.pt')
