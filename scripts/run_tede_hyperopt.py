@@ -220,7 +220,7 @@ def objective(trial):
     )
 
     trainer_tede = Trainer(
-        max_epochs=2,
+        max_epochs=2000,
         deterministic=False,
         accelerator=args.accelerator,
         devices="auto",
