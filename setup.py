@@ -23,7 +23,10 @@ setup(
         "seaborn==0.13.2",
         "setuptools==68.2.2",
         "torch==2.4.0",
+        "lightning==2.3.0",
+        "torchvision==0.19.0",
         "tqdm==4.65.0",
+        "uproot==5.3.3",
         "entmax @ git+https://github.com/deep-spin/entmax.git@master#egg=entmax",
     ],
 )
