@@ -9,7 +9,7 @@ class LogLikelihood:
         lmbd = self._model(pars)
         return np.sum(self._data * np.log(lmbd) - lmbd)
 
-class LogPoissonRatio:
+class LogLikelihoodRatio:
     def __init__(self, data, model):
         self._data = data
         self._model = model
