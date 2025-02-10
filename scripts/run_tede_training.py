@@ -24,27 +24,60 @@ kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float64)
 
 model_res_visualizator = res_visualizator_setup(data_configs)
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 args = tede_argparse()
 
-training_data_transformations = define_transformations("training") # Poisson noise + normalization
-val_data_transformations = define_transformations("val") # normalization only
+# Poisson noise + normalization
+training_data_transformations = define_transformations("training")
+
+# normalization only
+val_data_transformations = define_transformations("val") 
+
 
 train_data = create_dataset(
-    "training", path_to_processed_data, training_data_transformations)
-val1_data = create_dataset("val1", path_to_processed_data, val_data_transformations)
+    "training", 
+    path_to_processed_data, 
+    training_data_transformations
+)
+val1_data = create_dataset(
+    "val1", 
+    path_to_processed_data, 
+    val_data_transformations
+)
 val2_data = []
 for i in range(3):
     val2_i_data = create_dataset(
-        f"val2_{i+1}", path_to_processed_data, val_data_transformations, val2_rates=True)
+        f"val2_{i+1}", 
+        path_to_processed_data, 
+        val_data_transformations, 
+        val2_rates=True
+    )
     val2_data.append(val2_i_data)
 val2_data = ConcatDataset(val2_data)
 
-train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=20, pin_memory=True)
-val1_loader = DataLoader(val1_data, batch_size=val1_data.__len__(), shuffle=False, pin_memory=True)
-val2_loader = DataLoader(val2_data, batch_size=val2_data.__len__(), shuffle=False, pin_memory=True)
+train_loader = DataLoader(
+    train_data, 
+    batch_size=args.batch_size,
+    shuffle=True, 
+    num_workers=20, 
+    pin_memory=True
+)
 
-kl_div = GeneralizedKLDivLoss(log_input=False, log_target=False, reduction='batchmean')
+val1_loader = DataLoader(
+    val1_data, 
+    batch_size=val1_data.__len__(), 
+    shuffle=False, 
+    pin_memory=True
+)
+
+val2_loader = DataLoader(
+    val2_data, 
+    batch_size=val2_data.__len__(), 
+    shuffle=False, 
+    pin_memory=True
+)
+
+kl_div = GeneralizedKLDivLoss(
+    log_input=False, log_target=False, reduction='batchmean')
 wasserstein_distance = LpNormDistance(p=1) # Wasserstein distance
 cramer_distance = LpNormDistance(p=2) # Cramér-von Mises distance
 ks_distance = LpNormDistance(p=torch.inf) # Kolmogorov-Smirnov distance
@@ -57,10 +90,11 @@ val_metric_functions = {
 optimizer = optim.AdamW
 lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
 
-monitor_metric_es = "val_cramer_metric"
-monitor_metric_checkpoint = "val_cramer_metric"
-checkpoint_callback = ModelCheckpoint(save_top_k=1, monitor=monitor_metric_checkpoint, mode="min")
-early_stopping_callback = EarlyStopping(monitor=monitor_metric_es, mode="min", patience=200)
+monitor_metric = "val_cramer_metric"
+checkpoint_callback = ModelCheckpoint(
+    save_top_k=1, monitor=monitor_metric, mode="min")
+early_stopping_callback = EarlyStopping(
+    monitor=monitor_metric, mode="min", patience=200)
 
 tede_model = TEDE(
     n_sources=args.n_sources,
@@ -88,7 +122,7 @@ tede_model_lightning_training = TEDELightningTraining(
 trainer_tede = Trainer(
     max_epochs=1200,
     deterministic=True,
-    accelerator="gpu",
+    accelerator=args.accelerator,
     devices="auto",
     precision=64,
     callbacks=[

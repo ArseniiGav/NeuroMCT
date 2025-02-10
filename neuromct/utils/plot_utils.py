@@ -1,7 +1,7 @@
 from ..plot import ModelResultsVisualizator
 
 def res_visualizator_setup(configs):
-    path_to_plots = configs['path_to_plots']
+    plot_every_n_steps = configs['plot_every_n_steps']
     path_to_processed_data = configs['path_to_processed_data']
     path_to_models = configs['path_to_models']
 
@@ -23,7 +23,7 @@ def res_visualizator_setup(configs):
     LY_val2_values = configs['LY_val2_values']
 
     model_res_visualizator = ModelResultsVisualizator(
-        path_to_plots=path_to_plots,
+        plot_every_n_steps=plot_every_n_steps,
         path_to_scaler=path_to_models,
         path_to_processed_data=path_to_processed_data,
         n_sources=n_sources,
