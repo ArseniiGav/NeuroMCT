@@ -1,14 +1,21 @@
 {
     "n_sources": 5,
-    "batch_size": 32,
-    "lr": 1e-4,
     "output_dim": 800,
-    "activation": "relu",
     "d_model": 100,
     "nhead": 5,
-    "num_encoder_layers": 4,
+    "num_encoder_layers": 5,
     "dim_feedforward": 128,
-    "dropout": 0.1,
-    "entmax_alpha": 1.05,
-    "accelerator": "gpu"
+    "activation_function": "relu",
+    "learning_rate": 0.00011371399124161872,
+    "optimizer": "AdamW",
+    "lr_scheduler": "CosineAnnealingLR",
+    "dropout": 0.15000000000000002,
+    "entmax_alpha": 1.15,
+    "batch_size": 256,
+    "weight_decay": 0.006245720728386482,
+    "T_max": 45,
+    "beta1": 0.87,
+    "beta2": 0.982,
+    "accelerator": "gpu",
+    "monitor_metric": "val_cramer_metric"
 }

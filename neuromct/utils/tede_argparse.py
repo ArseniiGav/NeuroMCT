@@ -31,6 +31,11 @@ def tede_argparse():
     parser.add_argument("--entmax_alpha", type=float, default=1.25,
                          help='''The alpha parameter of the Entmax output layer (default=1.25).
                                  If alpha = 1.0, Softmax is applied.''')
+    parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
+                        help='''The main validation metric used during the training
+                                (i.e., used for the early stopping condition). Can be val_*_metric, 
+                                where * is either "cramer" or "wasserstein", or "ks". 
+                                Default=val_cramer_metric.''')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:

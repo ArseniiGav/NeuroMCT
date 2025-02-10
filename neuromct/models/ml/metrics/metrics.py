@@ -57,10 +57,6 @@ class LpNormDistance(nn.Module):
             raise ValueError("p cannot be neg. infinity, p must be positive: p > 0.")
 
     def _compute_cdf(self, values, weights, all_values, batch_size):
-        #torch.cumsum does not have a deterministic implementation in torch 2.4.0
-        original_deterministic_setting = torch.are_deterministic_algorithms_enabled()
-        if original_deterministic_setting:
-            torch.use_deterministic_algorithms(True, warn_only=True)
         indices = torch.searchsorted(values, all_values[:, :-1], right=True)
         if weights is None:
             cdf = indices / values.size(1)
@@ -92,7 +88,7 @@ class LpNormDistance(nn.Module):
         v_cdf = self._compute_cdf(v_sorted, v_weights, all_values, batch_size)
         
         # Compute the differences between CDFs
-        cdfs_deltas = torch.abs(u_cdf - v_cdf)        
+        cdfs_deltas = torch.abs(u_cdf - v_cdf)
         return cdfs_deltas, x_deltas
 
     def forward(self, u_values, v_values, u_weights=None, v_weights=None):

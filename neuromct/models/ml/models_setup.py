@@ -11,11 +11,12 @@ def setup(model_type, device, path_to_models=None):
             n_sources=args.n_sources,
             output_dim=args.output_dim,
             d_model=args.d_model,
+            activation=args.activation,
             nhead=args.nhead,
             num_encoder_layers=args.num_encoder_layers,
             dim_feedforward=args.dim_feedforward,
             dropout=args.dropout,
-            temperature=args.temperature
+            entmax_alpha=args.entmax_alpha
         ).double().to(device)
 
         path_to_models = path_to_models if path_to_models is not None \
