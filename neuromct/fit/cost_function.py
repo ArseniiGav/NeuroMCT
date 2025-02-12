@@ -2,25 +2,24 @@ import numpy as np
 
 class LogLikelihood:
     def __init__(self, data, model):
-        self._data = data
+        self._offset = np.array([1e-6]*len(data))
+        self._data = data + self._offset
         self._model = model
 
     def __call__(self, pars):
-        lmbd = self._model(pars)
+        lmbd = self._model(pars) + self._offset
         return np.sum(self._data * np.log(lmbd) - lmbd)
 
 class LogLikelihoodRatio:
     def __init__(self, data, model):
+        self._offset = 1e-6
         self._data = data
         self._model = model
 
     def __call__(self, pars):
-        lmbd = self._model(pars)
-        mask = lmbd <= 1e-16
-        if mask.any():
-            lmbd[mask] = 1e-16
+        lmbd = self._model(pars) + self._offset
         mask = (self._data == 0)
-        if mask.any():
+        if np.any(mask):
             ln = np.zeros(len(self._data))
             ln[~mask] = np.log(lmbd[~mask] / self._data[~mask])
         else:
