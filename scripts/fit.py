@@ -1,3 +1,4 @@
+from collections import defaultdict
 from lzma import open as lzma_open
 
 from iminuit import Minuit
@@ -6,7 +7,6 @@ from pickle import load as pickle_load
 from torch import tensor, int64, float64, set_num_threads, set_num_interop_threads
 from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
-from collections import defaultdict
 import numpy as np
 
 from neuromct.configs import data_configs
@@ -119,8 +119,8 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
             # viz_callback=False,
             # show_status=False,
             )
-    result['metadata'] = vars(opts)
-    outname = f"ultranest-{'-'.join(opts.sources)}"
+    # result['metadata'] = vars(opts)
+    outname = f"ultranest-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
         pickle_dump(result, file)
     return result
@@ -129,6 +129,8 @@ def perform_minuit_fit(chi2, par_init, opts):
     m = Minuit(chi2, par_init)
     par_edges = [(0, 1)]*3 + [(0.7, 1.3)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
+
+    # Set edges, make fit, unset edges, make fit
     if par_edges:
         for par, edge in zip(m.parameters, par_edges):
             m.limits[par] = edge
@@ -136,6 +138,22 @@ def perform_minuit_fit(chi2, par_init, opts):
         for p_name in m.pos2var:
             m.limits[p_name] = (None, None)
     m.migrad(ncall=100000)
+
+    # Scan near bf-value to ensure that we are in global minimum
+    for par in ('x0', 'x1', 'x2',):
+        bf = m.params[par].value
+        m.limits[par] = (bf-0.1, bf+0.1)
+    for par in m.parameters[3:]:
+        m.fixto(par, m.params[par].value)
+    m.scan(ncall=20)
+
+    # Make all parameters free
+    for p_name in m.pos2var:
+        m.limits[p_name] = (None, None)
+        m.fixed[p_name] = False
+
+    # Make final fit
+    m.migrad()
     m.hesse()
     m.minos()
 
@@ -145,7 +163,7 @@ def perform_minuit_fit(chi2, par_init, opts):
     result['fun'] = m.fval
     result['covariance'] = np.array(m.covariance)
     xdict, errorsdict, profiles_dict = dict(), dict(), defaultdict(dict)
-    for m_name, phys_name in zip(m.parameters, par_names):
+    for m_name, phys_name in zip(m.parameters[:3], par_names):
         par = m.params[m_name]
         xdict[phys_name] = par.value
         errorsdict[phys_name] = par.error
@@ -155,14 +173,37 @@ def perform_minuit_fit(chi2, par_init, opts):
         profiles_dict[phys_name]['fcn'] = fa
         profiles_dict[phys_name]['valid'] = ok
         profiles_dict[phys_name]['merror'] = par.merror
+        profiles_dict[phys_name]['merror_valid'] = m.merrors[m_name].is_valid
 
     result['xdict'] = xdict
     result['errorsdict'] = errorsdict
     result['profiles_dict'] = profiles_dict
 
-    outname = f"iminuit-{'-'.join(opts.sources)}"
+    outname = f"iminuit-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
         pickle_dump(result, file)
+    return m
+
+def perform_fc_fit(chi2, par_init, par_true, opts):
+    m = Minuit(chi2, par_init)
+    par_edges = [(0, 1)]*3 + [(0.7, 1.3)]*len(list(opts.sources))
+    par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
+    if par_edges:
+        for par, edge in zip(m.parameters, par_edges):
+            m.limits[par] = edge
+        m.migrad()
+        for p_name in m.pos2var:
+            m.limits[p_name] = (None, None)
+    m.migrad()
+    res_best = (m.valid, m.fmin.fval, m.values.to_dict())
+
+    m.fixto('x0', par_true[0])
+    m.migrad()
+    res_true = (m.valid, m.fmin.fval, m.values.to_dict())
+
+    outname = f"FC-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
+    with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
+        pickle_dump(dict(res_best=res_best, res_true=res_true), file)
     return m
 
 def read_data_eos(common_eos_path, dataset, file_n, sources):
@@ -170,7 +211,8 @@ def read_data_eos(common_eos_path, dataset, file_n, sources):
     data_dict = dict()
     for source_name in sources:
         rootpath = \
-                f'root://eos.jinr.ru/{common_eos_path}/{source_name}/{dataset}/reco/reco-{file_n}.root'
+                f'root://eos.jinr.ru//{common_eos_path}/{source_name}/{dataset}/reco/reco-{file_n}.root'
+        print(rootpath)
         with open_root(rootpath) as rootfile:
             energy = 1.07 * rootfile['TRec']['m_NPE'].array() / 1000.
             data, _ = np.histogram(energy, bins=edges)
@@ -193,11 +235,11 @@ def main(opts):
         log_likelihoods.append(LogLikelihoodRatio(data_dict[source], model))
     chi2_like = cost_funs_sum_wrapper(log_likelihoods)
 
-    if opts.fit_tool == 'metropolis_hastings':
+    if 'metropolis_hastings' in opts.fit_tool:
         sampler = perform_mh_fit(log_likelihood_sum, opts)
-    if opts.fit_tool == 'ultranest':
+    if 'ultranest' in opts.fit_tool:
         result = perform_ultranest_fit(log_likelihood_sum, opts)
-    if opts.fit_tool == 'iminuit':
+    if 'iminuit' in opts.fit_tool:
         if opts.dataset == 'testing_data':
             ls_pars = get_conditions(opts.file_number, opts.model_path)[0]
         else:
@@ -205,6 +247,15 @@ def main(opts):
             ls_pars = [0.525, 0.525, 0.525]
         init_pars = list(ls_pars) + [1]*len(list(opts.sources))
         m = perform_minuit_fit(chi2_like, init_pars, opts)
+    if 'FC' in opts.fit_tool:
+        if opts.dataset == 'testing_data':
+            ls_pars = get_conditions(opts.file_number, opts.model_path)[0]
+        else:
+            # kb = 15.45, fc = 0.525, LY = 10100
+            ls_pars = [0.525, 0.525, 0.525]
+        init_pars = list(ls_pars) + [1]*len(list(opts.sources))
+        m = perform_fc_fit(chi2_like, init_pars, init_pars, opts)
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -213,12 +264,13 @@ if __name__ == '__main__':
     parser.add_argument('--sources', required=True,
                         choices=sources_all,
                         nargs='+', help='Which sources to use')
-    parser.add_argument('--fit-tool', choices=('metropolis_hastings', 'ultranest', 'iminuit'),
+    parser.add_argument('--fit-tool', nargs='+',
+                        choices=('metropolis_hastings', 'ultranest', 'iminuit', 'FC',),
                         default='metropolis_hastings', help='What tools to use for fitting')
 
     parser.add_argument('-d', '--data', default='./data', help='Path to find input data files')
     parser.add_argument('--common-eos-path',
-                        default='/eos/juno/users/d/dolzikov/neuromct_ipnuts',
+                        default='/eos/juno/users/d/dolzhikov/neuromct_inputs',
                         help='Common path for all sources in eos')
     parser.add_argument('--dataset', default='testing_data', help='Dataset to use for fits')
     parser.add_argument('--file-number', default=0, type=int, help='File number to use')
