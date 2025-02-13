@@ -202,5 +202,5 @@ best_tede_model = TEDELightningTraining.load_from_checkpoint(
 
 torch.save(
     best_tede_model.model.state_dict(), 
-    f"{path_to_tede_training_results}/tede_model.pth"
+    f"{path_to_models}/tede_model.pth"
 )
