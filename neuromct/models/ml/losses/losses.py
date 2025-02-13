@@ -19,7 +19,7 @@ class GeneralizedPoissonNLLLoss(nn.Module):
     
     def forward(self, y_pred, y_true):
         if self.log:
-            output = torch.exp(y_pred) - 1 - (torch.exp(y_true) - 1) * (torch.log(torch.exp(y_pred) - 1 + 1e-08))
+            output = torch.exp(y_pred) - 1 - (torch.exp(y_true) - 1) * (torch.log(torch.exp(y_pred) - 1))
             output = output.mean()
         else:
             output = nn.PoissonNLLLoss(log_input=False)
@@ -27,7 +27,7 @@ class GeneralizedPoissonNLLLoss(nn.Module):
 
 
 class GeneralizedKLDivLoss(nn.Module):
-    def __init__(self, log_input, log_target, reduction, eps=1e-9):
+    def __init__(self, log_input, log_target, reduction):
         """
         Initialize the KL-divergence loss.
         :param reduction: Specifies the reduction to apply to the output.
@@ -35,7 +35,6 @@ class GeneralizedKLDivLoss(nn.Module):
                 log: Specifies the scale of predicted input.
         """
         super(GeneralizedKLDivLoss, self).__init__()
-        self.eps = eps
         self.log_input = log_input
         self.kl_div = nn.KLDivLoss(reduction=reduction, log_target=log_target)
 
@@ -49,5 +48,5 @@ class GeneralizedKLDivLoss(nn.Module):
         if self.log_input:
             kl_div_loss = self.kl_div(predicted, target)
         else:
-            kl_div_loss = self.kl_div(torch.log(predicted + self.eps), target)
+            kl_div_loss = self.kl_div(torch.log(predicted), target)
         return kl_div_loss
