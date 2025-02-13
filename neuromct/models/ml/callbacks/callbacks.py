@@ -222,7 +222,11 @@ class ModelResultsVisualizerCallback(Callback):
         device = pl_training_module.device
 
         training_spectra, val1_spectra, val2_spectra = self._get_predictions(
-            model=pl_training_module.model, device=device)
+            model=pl_training_module.model, 
+            device=device, 
+            current_epoch=current_epoch, 
+            global_step=global_step
+        )
         self._save_spectra_plots(
             train_loss_value,
             val1_metrics_values,
