@@ -1,4 +1,5 @@
 import torch
+
 from .tede import TEDE
 from ...configs import data_configs
 from ...utils import tede_argparse
@@ -16,16 +17,22 @@ def setup(model_type, device, path_to_models=None):
             num_encoder_layers=args.num_encoder_layers,
             dim_feedforward=args.dim_feedforward,
             dropout=args.dropout,
-            entmax_alpha=args.entmax_alpha
-        ).double().to(device)
+            temperature=args.temperature,
+            bin_size=data_configs['bin_size']
+        ).float().to(device)
 
         path_to_models = path_to_models if path_to_models is not None \
                 else data_configs['path_to_models']
-        model.load_state_dict(torch.load(f"{path_to_models}/tede_model.pth", map_location=device))
+        model.load_state_dict(
+            torch.load(
+                f"{path_to_models}/tede_model.pth", 
+                map_location=device
+            )
+        )
         model.eval()
         return model
 
-    elif model_type == 'nf':
+    elif model_type == 'nfde':
         nf_model = FlowsModel(base_type=base_type,
                 flow_type=flow_type,
                 N_conditions=N_conditions,
@@ -39,4 +46,4 @@ def setup(model_type, device, path_to_models=None):
 
         return nf_model
     else:
-        raise ValueError("Model type should be 'tede' or 'nf'")
+        raise ValueError("Model type should be 'tede' or 'nfde'")
