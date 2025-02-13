@@ -1,2 +1,2 @@
 from .matplotlib_setup import matplotlib_setup
-from .res_visualizator import ModelResultsVisualizator
+from .res_visualizator import ModelResultsVisualizer
