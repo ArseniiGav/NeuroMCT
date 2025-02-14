@@ -137,20 +137,20 @@ def perform_minuit_fit(chi2, par_init, opts):
         m.migrad(ncall=100000)
         for p_name in m.pos2var:
             m.limits[p_name] = (None, None)
-    m.migrad(ncall=100000)
+    # m.migrad(ncall=100000)
 
     # Scan near bf-value to ensure that we are in global minimum
-    for par in ('x0', 'x1', 'x2',):
-        bf = m.params[par].value
-        m.limits[par] = (bf-0.1, bf+0.1)
-    for par in m.parameters[3:]:
-        m.fixto(par, m.params[par].value)
-    m.scan(ncall=20)
+    # for par in ('x0', 'x1', 'x2',):
+    #     bf = m.params[par].value
+    #     m.limits[par] = (bf-0.1, bf+0.1)
+    # for par in m.parameters[3:]:
+    #     m.fixto(par, m.params[par].value)
+    # m.scan(ncall=20)
 
-    # Make all parameters free
-    for p_name in m.pos2var:
-        m.limits[p_name] = (None, None)
-        m.fixed[p_name] = False
+    # # Make all parameters free
+    # for p_name in m.pos2var:
+    #     m.limits[p_name] = (None, None)
+    #     m.fixed[p_name] = False
 
     # Make final fit
     m.migrad()
@@ -197,13 +197,18 @@ def perform_fc_fit(chi2, par_init, par_true, opts):
     m.migrad()
     res_best = (m.valid, m.fmin.fval, m.values.to_dict())
 
-    m.fixto('x0', par_true[0])
-    m.migrad()
-    res_true = (m.valid, m.fmin.fval, m.values.to_dict())
+    res_dict = dict()
+    res_dict['res_best'] = res_best
+    for i, par in enumerate(('x0', 'x1', 'x2')):
+        m.fixto(par, par_true[i])
+        m.migrad()
+        res_dict[f'res_true_{par}'] = (m.valid, m.fmin.fval, m.values.to_dict())
+        m.fixed[par] = False
+        # res_true = (m.valid, m.fmin.fval, m.values.to_dict())
 
     outname = f"FC-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
-        pickle_dump(dict(res_best=res_best, res_true=res_true), file)
+        pickle_dump(res_dict, file)
     return m
 
 def read_data_eos(common_eos_path, dataset, file_n, sources):
