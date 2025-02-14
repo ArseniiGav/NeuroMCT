@@ -28,9 +28,8 @@ def tede_argparse():
                          help='The dimension of the feedforward network model (default=32)')
     parser.add_argument("--dropout", type=float, default=0.1,
                          help='The dropout value in the Transformer encoder layers (default=0.1)')
-    parser.add_argument("--entmax_alpha", type=float, default=1.25,
-                         help='''The alpha parameter of the Entmax output layer (default=1.25).
-                                 If alpha = 1.0, Softmax is applied.''')
+    parser.add_argument("--temperature", type=float, default=1.0,
+                         help='The temperature parameter for the output Softmax layer (default=1.0)')
     parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
                         help='''The main validation metric used during the training
                                 (i.e., used for the early stopping condition). Can be val_*_metric, 
