@@ -1,14 +1,19 @@
+import os
+
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
+from lightning import Trainer
+from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import LearningRateMonitor
-from lightning import Trainer
+from lightning.pytorch.loggers import CSVLogger
 
 from neuromct.models.ml import TEDE, TEDELightningTraining
 from neuromct.models.ml.losses import GeneralizedKLDivLoss
 from neuromct.models.ml.metrics import LpNormDistance
+from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse
 from neuromct.utils import create_dataset
@@ -17,21 +22,27 @@ from neuromct.utils import res_visualizator_setup
 
 path_to_models = data_configs['path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
+path_to_tede_training_results = data_configs['path_to_tede_training_results']
+
+os.makedirs(f'{path_to_tede_training_results}', exist_ok=True)
+os.makedirs(f'{path_to_tede_training_results}/plots', exist_ok=True)
+os.makedirs(f'{path_to_tede_training_results}/predictions', exist_ok=True)
 
 kNPE_bins_edges = data_configs['kNPE_bins_edges']
 kNPE_bins_centers = (kNPE_bins_edges[:-1] + kNPE_bins_edges[1:]) / 2
-kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float64)
+kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float32)
+bin_size = data_configs['bin_size']
 
 model_res_visualizator = res_visualizator_setup(data_configs)
 
 args = tede_argparse()
+seed_everything(args.seed, workers=True)
 
-# Poisson noise + normalization
-training_data_transformations = define_transformations("training")
+# Poisson noise + pdf constuction
+training_data_transformations = define_transformations("training", bin_size)
 
-# normalization only
-val_data_transformations = define_transformations("val") 
-
+# pdf constuction only
+val_data_transformations = define_transformations("val", bin_size) 
 
 train_data = create_dataset(
     "training", 
@@ -87,25 +98,55 @@ val_metric_functions = {
     "ks": ks_distance
 }
 
-optimizer = optim.AdamW
-lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
+optimizer_hparams = {}
+if args.optimizer == 'RMSprop':
+    optimizer = optim.RMSprop
+    optimizer_hparams['alpha'] = args.alpha
+elif args.optimizer == 'AdamW':
+    optimizer = optim.AdamW
+    optimizer_hparams['beta1'] = args.beta1
+    optimizer_hparams['beta2'] = args.beta2
+
+if args.lr_scheduler == 'ExponentialLR':
+    lr_scheduler = optim.lr_scheduler.ExponentialLR
+    optimizer_hparams['gamma'] = args.gamma
+elif args.lr_scheduler == 'CosineAnnealingLR':
+    lr_scheduler = optim.lr_scheduler.CosineAnnealingLR
+    optimizer_hparams['T_max'] = args.T_max
+elif args.lr_scheduler == 'ReduceLROnPlateau':
+    lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau
+    optimizer_hparams['reduction_factor'] = args.reduction_factor
+else:
+    lr_scheduler = None
 
 monitor_metric = "val_cramer_metric"
 checkpoint_callback = ModelCheckpoint(
     save_top_k=1, monitor=monitor_metric, mode="min")
 early_stopping_callback = EarlyStopping(
     monitor=monitor_metric, mode="min", patience=200)
+res_visualizer_callback = ModelResultsVisualizerCallback(
+    res_visualizer=model_res_visualizator,
+    base_path_to_savings=path_to_tede_training_results,
+    plots_dir_name='plots',
+    predictions_dir_name='predictions'
+)
+
+logger = CSVLogger(
+    save_dir=path_to_tede_training_results, 
+    name=f"training_logs"
+)
 
 tede_model = TEDE(
     n_sources=args.n_sources,
     output_dim=args.output_dim,
-    activation=args.activation,
     d_model=args.d_model,
+    activation=args.activation,
     nhead=args.nhead,
     num_encoder_layers=args.num_encoder_layers,
     dim_feedforward=args.dim_feedforward,
     dropout=args.dropout,
-    entmax_alpha=args.entmax_alpha
+    temperature=args.temperature,
+    bin_size=bin_size
 )
 
 tede_model_lightning_training = TEDELightningTraining(
@@ -114,22 +155,25 @@ tede_model_lightning_training = TEDELightningTraining(
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
+    optimizer_hparams=optimizer_hparams,
     lr=args.lr,
+    weight_decay=args.weight_decay,
     bins_centers=kNPE_bins_centers,
-    res_visualizator=model_res_visualizator,
+    monitor_metric=args.monitor_metric
 )
 
 trainer_tede = Trainer(
-    max_epochs=1200,
-    deterministic=True,
+    max_epochs=2000,
     accelerator=args.accelerator,
     devices="auto",
-    precision=64,
+    precision="16-mixed",
     callbacks=[
         checkpoint_callback,
         early_stopping_callback,
+        res_visualizer_callback,
         LearningRateMonitor(),
     ],
+    logger=logger,
     enable_checkpointing=True,
 )
 
@@ -149,9 +193,14 @@ best_tede_model = TEDELightningTraining.load_from_checkpoint(
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
+    optimizer_hparams=optimizer_hparams,
     lr=args.lr,
+    weight_decay=args.weight_decay,
     bins_centers=kNPE_bins_centers,
-    res_visualizator=model_res_visualizator,
+    monitor_metric=args.monitor_metric
 )
 
-torch.save(best_tede_model.model.state_dict(), f"{path_to_models}/tede_model.pth")
+torch.save(
+    best_tede_model.model.state_dict(), 
+    f"{path_to_models}/tede_model.pth"
+)

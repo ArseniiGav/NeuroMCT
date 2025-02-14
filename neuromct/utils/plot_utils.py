@@ -1,4 +1,4 @@
-from ..plot import ModelResultsVisualizator
+from ..plot import ModelResultsVisualizer
 
 def res_visualizator_setup(configs):
     plot_every_n_steps = configs['plot_every_n_steps']
@@ -22,7 +22,7 @@ def res_visualizator_setup(configs):
     fC_val2_values = configs['fC_val2_values']
     LY_val2_values = configs['LY_val2_values']
 
-    model_res_visualizator = ModelResultsVisualizator(
+    model_results_visualizer = ModelResultsVisualizer(
         plot_every_n_steps=plot_every_n_steps,
         path_to_scaler=path_to_models,
         path_to_processed_data=path_to_processed_data,
@@ -41,4 +41,4 @@ def res_visualizator_setup(configs):
         LY_val2_values=LY_val2_values
     )
 
-    return model_res_visualizator
+    return model_results_visualizer

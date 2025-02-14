@@ -1,7 +1,7 @@
 from lzma import open as lzma_open
 
 from pickle import dump as pickle_dump
-from torch import tensor, int64, float64, set_num_threads, set_num_interop_threads
+from torch import tensor, int32, float32, set_num_threads, set_num_interop_threads
 from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
 import numpy as np
@@ -39,9 +39,9 @@ class Model:
 
     def __call__(self, pars):
         kb, fc, ly, n = pars
-        nl_pars = tensor([kb, fc, ly], dtype=float64).unsqueeze(0)
+        nl_pars = tensor([kb, fc, ly], dtype=float32).unsqueeze(0)
         out = self._model(
-                nl_pars, tensor([[self._source_n]], dtype=int64)
+                nl_pars, tensor([[self._source_n]], dtype=int32)
                 ).detach().numpy()[0] * self._integral
         return n * out
 
