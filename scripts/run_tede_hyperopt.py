@@ -274,7 +274,7 @@ def objective(trial):
         f"{path_to_savings}/tede_model.pth"
     )
 
-    trial_value = checkpoint_callback.best_model_score
+    trial_value = checkpoint_callback.best_model_score.item()
     trial_info = {
         'trial_number': trial.number,
         'main_hparams': main_hparams,
