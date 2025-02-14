@@ -8,7 +8,7 @@ from .matplotlib_setup import matplotlib_setup
 matplotlib_setup(tick_labelsize=14, axes_labelsize=14, legend_fontsize=9)
 
 
-class ModelResultsVisualizator:
+class ModelResultsVisualizer:
     def __init__(
             self,
             plot_every_n_steps: int,
@@ -34,6 +34,7 @@ class ModelResultsVisualizator:
         self.sources_names_to_vis = sources_names_to_vis
         self.sources_colors_to_vis = sources_colors_to_vis
         self.kNPE_bins_edges = bins_edges
+        self.bin_size = np.diff(bins_edges)[0]
         self.n_bins = len(bins_edges) - 1
         self.params_dim = params_dim
 
@@ -54,14 +55,14 @@ class ModelResultsVisualizator:
 
         self.val2_values = np.array(
             [self.kB_val2_values, self.fC_val2_values, self.LY_val2_values], 
-            dtype=np.float64).T
+            dtype=np.float32).T
         self.val2_params_to_vis = np.repeat(
             self.val2_values, self.n_sources, axis=0)
         self.val2_params_to_vis = torch.tensor(
             self.scaler.transform(self.val2_params_to_vis), 
-            dtype=torch.float64)
+            dtype=torch.float32)
         self.val2_source_types_to_vis = torch.arange(
-            self.n_sources, dtype=torch.int64
+            self.n_sources, dtype=torch.int32
         ).unsqueeze(1).repeat(self.params_dim, 1)
 
         val2_data = []
@@ -69,7 +70,7 @@ class ModelResultsVisualizator:
             val2_i_data = load_processed_data(
                 f"val2_{i+1}", path_to_processed_data, val2_rates=True)
             val2_i_data_spectra = val2_i_data[0]
-            val2_i_data_spectra = val2_i_data_spectra / val2_i_data_spectra.sum(1)[:, None]
+            val2_i_data_spectra = val2_i_data_spectra / (val2_i_data_spectra.sum(1)[:, None] * self.bin_size)
             val2_data.append(val2_i_data_spectra)
         self.val2_rates_to_vis = val2_data
     
@@ -85,7 +86,7 @@ class ModelResultsVisualizator:
         params_samples_to_vis_transformed = []
 
         spectra, params, source_types = data
-        spectra = spectra / spectra.sum(1)[:, None]
+        spectra = spectra / (spectra.sum(1)[:, None] * self.bin_size)
         for j in range(self.params_dim):
             if self.n_params_values_to_vis > 1:
                 param_vary_condition = torch.logical_or(
@@ -207,7 +208,7 @@ class ModelResultsVisualizator:
                     ax[j].add_artist(legend2)
 
                 ax[j].set_title(subplot_title, fontsize=10)
-                ax[j].set_ylim(5e-5, 0.25)
+                ax[j].set_ylim(2.5e-3, 12.5)
                 ax[j].set_yscale("log")
                 ax[j].set_xlim(0.0, 16.0)
                 
@@ -281,7 +282,7 @@ class ModelResultsVisualizator:
                 ax[j].add_artist(legend2)
 
             ax[j].set_title(subplot_title, fontsize=14)
-            ax[j].set_ylim(5e-6, 0.5)
+            ax[j].set_ylim(2.5e-4, 25)
             ax[j].set_xlim(0.0, 16.0)
             ax[j].set_yscale("log")
             ax[j].set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=18)
@@ -363,15 +364,15 @@ class ModelResultsVisualizator:
 
             ax_diff.set_xlim(0.0, 16.0)
             ax_diff.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
-            ax_diff.set_ylim(-0.05, 0.05)
-            ax_diff.set_yticks([-0.04, -0.02, 0, 0.02, 0.04])
+            ax_diff.set_ylim(-0.35, 0.35)
+            ax_diff.set_yticks([-0.30, -0.15, 0, 0.15, 0.30])
             if j == 0:
                 ax_diff.set_ylabel(
                     r"$\Delta = \frac{f_{\rm{TEDE}} - f_{\rm{JUNOSW}}}{\sqrt{f_{\rm{JUNOSW}}}}$",
                     fontsize=17
                 )
 
-            ax_main.set_ylim(5e-6, 0.5)
+            ax_main.set_ylim(2.5e-4, 25)
             ax_main.set_xlim(0.0, 16.0)
             ax_main.tick_params(labelbottom=False)
             ax_main.set_yscale("log")
@@ -425,7 +426,7 @@ class ModelResultsVisualizator:
         ax.set_ylabel("KL-divergence loss: " + r"$L_{\rm KL}$", fontsize=16, color='black')
         ax.set_xlabel('Iteration', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(5e-3, 2.0)
+        ax.set_ylim(1e-1, 1e2)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=16)
 
@@ -470,7 +471,7 @@ class ModelResultsVisualizator:
 
             ylabel = "Kolmogorov-Smirnov distance: " + r"$d^{V}_{\infty}$"
 
-        x_to_plot = np.arange(1, current_epoch+2)
+        x_to_plot = np.arange(1, current_epoch+1)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
             x_to_plot,
@@ -519,7 +520,7 @@ class ModelResultsVisualizator:
             path_to_save: str
         ) -> None:
         ylabel = "Validation metrics: " + r"$d^{V}_{p}$"
-        x_to_plot = np.arange(1, current_epoch+2)
+        x_to_plot = np.arange(1, current_epoch+1)
         title = ""
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))

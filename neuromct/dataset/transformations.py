@@ -2,24 +2,25 @@ import torch
 
 
 class PoissonNoise:
-    def __call__(self, x):
+    def __call__(self, f):
         # Apply Poisson noise
-        x_noised = torch.poisson(x)
-        return x_noised
+        f_noised = torch.poisson(f)
+        return f_noised
 
 
-class NormalizeToUnity:
-    def __call__(self, x):
-        # Normalize x to unity (e.g. normalize spectra to get a PDF)
-        x_normalized = x / torch.sum(x)
-        return x_normalized
+class BuildPDF:
+    def __init__(self, Δx):
+        self.Δx = Δx
+
+    def __call__(self, f):
+        # Build a PDF: normalize to the sum and to the bin size Δx
+        sum_f = torch.sum(f)
+        pdf = f / (sum_f * self.Δx)
+        return pdf
 
 
 class LogScale:
-    def __init__(self, ε=1e-8):
-        self.ε = ε
-
-    def __call__(self, x):
+    def __call__(self, f):
         # Apply the log rescaling transformation
-        x_log_scale = torch.log(x + self.ε)
-        return x_log_scale
+        f_log_scale = torch.log(f)
+        return f_log_scale
