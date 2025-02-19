@@ -16,7 +16,7 @@ def tede_argparse():
                         help='The learning rate (default=5e-4)')
     parser.add_argument("--output_dim", type=int, default=800,
                          help='The number of bins that used to describe the spectra (default=800)')
-    parser.add_argument("--activation", type=str, default="relu",
+    parser.add_argument("--activation_function", type=str, default="relu",
                          help='Activation function of the hidden layers (Either "relu" or "gelu", default="relu")')
     parser.add_argument("--d_model", type=int, default=128,
                          help='The number of expected features in the input of the encoder layers (default=128)')

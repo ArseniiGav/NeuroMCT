@@ -30,7 +30,7 @@ data_configs = {
     "sources_colors_to_vis": sources_colors_to_vis,
 
     # params for plots configs
-    "plot_every_n_steps": 1,
+    "plot_every_n_steps": 50,
     "n_params_values_to_vis": 4,
 
     "params_values_to_vis_training": torch.tensor(
