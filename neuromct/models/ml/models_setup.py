@@ -12,7 +12,7 @@ def setup(model_type, device, path_to_models=None):
             n_sources=args.n_sources,
             output_dim=args.output_dim,
             d_model=args.d_model,
-            activation=args.activation,
+            activation=args.activation_function,
             nhead=args.nhead,
             num_encoder_layers=args.num_encoder_layers,
             dim_feedforward=args.dim_feedforward,
@@ -26,7 +26,8 @@ def setup(model_type, device, path_to_models=None):
         model.load_state_dict(
             torch.load(
                 f"{path_to_models}/tede_model.pth", 
-                map_location=device
+                map_location=device,
+                weights_only=True
             )
         )
         model.eval()
