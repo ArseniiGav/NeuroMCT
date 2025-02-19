@@ -13,6 +13,8 @@ from neuromct.configs import data_configs
 from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio
 from neuromct.models.ml import setup
 
+import os
+os.environ['MKL_NUM_THREADS'] = '1'
 set_num_threads(1)
 set_num_interop_threads(1)
 
@@ -76,9 +78,10 @@ class Model:
     def __call__(self, pars):
         kb, fc, ly, n = pars
         nl_pars = tensor([kb, fc, ly], dtype=float32).unsqueeze(0)
+        bin_width = 0.02
         out = self._model(
                 nl_pars, tensor([[self._source_n]], dtype=int32)
-                ).detach().numpy()[0] * self._integral
+                ).detach().numpy()[0] * self._integral * bin_width
         return n * out
 
 def cost_funs_sum_wrapper(cost_funs):
@@ -116,8 +119,8 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
 
     sampler = ReactiveNestedSampler(par_names, log_likelihood_fn, prior_transform)
     result = sampler.run(
-            # viz_callback=False,
-            # show_status=False,
+            viz_callback=False,
+            show_status=False,
             )
     # result['metadata'] = vars(opts)
     outname = f"ultranest-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
@@ -204,6 +207,8 @@ def perform_fc_fit(chi2, par_init, par_true, opts):
         m.migrad()
         res_dict[f'res_true_{par}'] = (m.valid, m.fmin.fval, m.values.to_dict())
         m.fixed[par] = False
+        for p in ('x0', 'x1', 'x2',):
+            m.values[p] = res_best[-1][p]
         # res_true = (m.valid, m.fmin.fval, m.values.to_dict())
 
     outname = f"FC-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
