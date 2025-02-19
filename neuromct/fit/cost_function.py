@@ -2,8 +2,8 @@ import numpy as np
 
 class LogLikelihood:
     def __init__(self, data, model):
-        self._offset = np.array([1e-6]*len(data))
-        self._data = data + self._offset
+        self._offset = 1
+        self._data = np.array(data) + self._offset
         self._model = model
 
     def __call__(self, pars):
@@ -12,8 +12,8 @@ class LogLikelihood:
 
 class LogLikelihoodRatio:
     def __init__(self, data, model):
-        self._offset = 1e-6
-        self._data = data
+        self._offset = 1
+        self._data = np.array(data) + self._offset
         self._model = model
 
     def __call__(self, pars):
