@@ -274,8 +274,9 @@ def objective(trial):
         f"{path_to_savings}/tede_model.pth"
     )
 
-    trial_value = trainer_tede.callback_metrics[args.monitor_metric].item()
+    trial_value = checkpoint_callback.best_model_score.item()
     trial_info = {
+        'trial_number': trial.number,
         'main_hparams': main_hparams,
         'optimizer_hparams': optimizer_hparams,
         'objective_value': trial_value,
@@ -289,9 +290,10 @@ def objective(trial):
     return trial_value
 
 # Create an Optuna study and run optimization
+storage_path = f"{path_to_tede_hopt_results}/seed_{args.seed}/tede_study.db"
 study = optuna.create_study(
     study_name="tede_hp_optimization",
-    storage=f"sqlite:///{path_to_tede_hopt_results}/seed_{args.seed}/tede_study.db",
+    storage=f"sqlite:///{storage_path}",
     direction='minimize',
     load_if_exists=True,
     sampler=optuna.samplers.TPESampler(seed=args.seed),
@@ -299,26 +301,26 @@ study = optuna.create_study(
         min_resource=50, max_resource="auto", reduction_factor=3),
 )
 
-# initial hyperparameters
-initial_hparams = {
-    'd_model': 100,
-    'nhead': 5,
-    'num_encoder_layers': 4,
-    'dim_feedforward': 128,
-    'activation_function': 'relu',
-    'learning_rate': 1e-4,
-    'optimizer': 'AdamW',
-    'lr_scheduler': 'CosineAnnealingLR',
-    'dropout': 0.1,
-    'temperature': 2.0,
-    'batch_size': 32,
-    'weight_decay': 1e-4,
-    'T_max': 50,
-    'beta1': 0.9,
-    'beta2': 0.99,
-}
-
-study.enqueue_trial(initial_hparams)
+if os.path.exists(storage_path) == False:
+    # initial hyperparameters
+    initial_hparams = {
+        'd_model': 100,
+        'nhead': 5,
+        'num_encoder_layers': 4,
+        'dim_feedforward': 128,
+        'activation_function': 'relu',
+        'learning_rate': 1e-4,
+        'optimizer': 'AdamW',
+        'lr_scheduler': 'CosineAnnealingLR',
+        'dropout': 0.1,
+        'temperature': 2.0,
+        'batch_size': 32,
+        'weight_decay': 1e-4,
+        'T_max': 50,
+        'beta1': 0.9,
+        'beta2': 0.99,
+    }
+    study.enqueue_trial(initial_hparams)
 study.optimize(objective, n_trials=args.n_trials) 
 
 with open(f'{path_to_tede_hopt_results}/seed_{args.seed}/tede_study_output.pkl', "wb") as f:
