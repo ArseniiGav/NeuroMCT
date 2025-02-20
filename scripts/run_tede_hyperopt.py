@@ -113,7 +113,7 @@ def objective(trial):
         save_top_k=1, monitor=args.monitor_metric, mode="min")
     
     early_stopping_callback = EarlyStopping(
-        monitor=args.monitor_metric, mode="min", patience=100)
+        monitor=args.monitor_metric, mode="min", patience=200)
     
     res_visualizer_callback = ModelResultsVisualizerCallback(
         res_visualizer=model_res_visualizator,
@@ -291,6 +291,12 @@ def objective(trial):
 
 # Create an Optuna study and run optimization
 storage_path = f"{path_to_tede_hopt_results}/seed_{args.seed}/tede_study.db"
+
+if os.path.exists(storage_path) == False:
+    use_initials = True
+else:
+    use_initials = False
+
 study = optuna.create_study(
     study_name="tede_hp_optimization",
     storage=f"sqlite:///{storage_path}",
@@ -301,7 +307,7 @@ study = optuna.create_study(
         min_resource=50, max_resource="auto", reduction_factor=3),
 )
 
-if os.path.exists(storage_path) == False:
+if use_initials:
     # initial hyperparameters
     initial_hparams = {
         'd_model': 100,
