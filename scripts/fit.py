@@ -270,7 +270,7 @@ def main(opts):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--n-samples', type=int, default=500000, help='Number of samples to produce')
+    parser.add_argument('--n-samples', type=int, default=100000, help='Number of samples to produce')
     parser.add_argument('--sources', required=True,
                         choices=sources_all,
                         nargs='+', help='Which sources to use')
