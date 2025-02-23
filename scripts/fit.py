@@ -8,6 +8,7 @@ from torch import tensor, int32, float32, set_num_threads, set_num_interop_threa
 from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
 import numpy as np
+from scipy.linalg import solve_triangular
 
 from neuromct.configs import data_configs
 from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio, NegativeLogLikelihood
@@ -80,7 +81,7 @@ class Model:
 
     def __call__(self, pars):
         kb, fc, ly, n = pars
-        if self._cholesky_cov:
+        if self._cholesky_cov is not None:
             kb, fc, ly = self._cholesky_cov @ [kb, fc, ly]
         nl_pars = tensor([kb, fc, ly], dtype=float32).unsqueeze(0)
         out = self._model(
@@ -132,9 +133,11 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
         pickle_dump(result, file)
     return result
 
-def perform_minuit_fit(chi2, par_init, opts):
+def perform_minuit_fit(chi2, par_init, opts, cholesky_cov):
     m = Minuit(chi2, par_init)
-    par_edges = [(0, 1)]*3 + [(0.7, 1.3)]*len(list(opts.sources))
+    m.precision = 1e-7
+    # m.print_level = 3
+    par_edges = [(0, 56), (0, 220), (0, 2506)] + [(0.9, 1.1)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
 
     # Set edges, make fit, unset edges, make fit
@@ -144,31 +147,20 @@ def perform_minuit_fit(chi2, par_init, opts):
         m.migrad(ncall=100000)
         for p_name in m.pos2var:
             m.limits[p_name] = (None, None)
-    # m.migrad(ncall=100000)
-
-    # Scan near bf-value to ensure that we are in global minimum
-    # for par in ('x0', 'x1', 'x2',):
-    #     bf = m.params[par].value
-    #     m.limits[par] = (bf-0.1, bf+0.1)
-    # for par in m.parameters[3:]:
-    #     m.fixto(par, m.params[par].value)
-    # m.scan(ncall=20)
-
-    # # Make all parameters free
-    # for p_name in m.pos2var:
-    #     m.limits[p_name] = (None, None)
-    #     m.fixed[p_name] = False
-
-    # Make final fit
-    m.migrad()
+    m.migrad(ncall=100000)
     m.hesse()
+    m.migrad(ncall=100000)
     m.minos()
 
+    # Save results
     result = dict()
     result['valid'] = m.valid
     result['message'] = str(m.fmin)
     result['fun'] = m.fval
     result['covariance'] = np.array(m.covariance)
+    result['corr'] = np.array(m.covariance.correlation())
+    result['cholesky_cov'] = cholesky_cov
+
     xdict, errorsdict, profiles_dict = dict(), dict(), defaultdict(dict)
     for m_name, phys_name in zip(m.parameters[:3], par_names):
         par = m.params[m_name]
@@ -191,9 +183,10 @@ def perform_minuit_fit(chi2, par_init, opts):
         pickle_dump(result, file)
     return m
 
-def perform_fc_fit(chi2, par_init, par_true, opts):
+def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov):
     m = Minuit(chi2, par_init)
-    par_edges = [(0, 1)]*3 + [(0.7, 1.3)]*len(list(opts.sources))
+    m.precision = 1e-7
+    par_edges = [(0, 56), (0, 220), (0, 2506)] # + [(0.7, 1.3)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
     if par_edges:
         for par, edge in zip(m.parameters, par_edges):
@@ -236,39 +229,37 @@ def read_data_eos(common_eos_path, dataset, file_n, sources):
 def main(opts):
     # data_dict = read_data(opts.data, opts.sources)
     data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources)
+    cholesky_cov = np.load('average_cov_cholesky_decomposed.npy')
 
     log_likelihoods = list()
+    chi2s = list()
     for source in opts.sources:
-        model = Model(source, np.sum(data_dict[source]), path_to_models=opts.model_path)
-        log_likelihoods.append(LogLikelihood(data_dict[source], model))
+        data = data_dict[source]
+        model = Model(source, np.sum(data), path_to_models=opts.model_path)
+        log_likelihoods.append(LogLikelihood(data, model))
+        if cholesky_cov is not None:
+            model = Model(source, np.sum(data),
+                          path_to_models=opts.model_path, cholesky_cov=cholesky_cov)
+        chi2s.append(LogLikelihoodRatio(data, model))
     log_likelihood_sum = cost_funs_sum_wrapper(log_likelihoods)
-
-    log_likelihoods = list()
-    for source in opts.sources:
-        model = Model(source, np.sum(data_dict[source]), path_to_models=opts.model_path)
-        log_likelihoods.append(LogLikelihoodRatio(data_dict[source], model))
-    chi2_like = cost_funs_sum_wrapper(log_likelihoods)
+    chi2_like = cost_funs_sum_wrapper(chi2s)
 
     if 'metropolis_hastings' in opts.fit_tool:
         sampler = perform_mh_fit(log_likelihood_sum, opts)
     if 'ultranest' in opts.fit_tool:
         result = perform_ultranest_fit(log_likelihood_sum, opts)
     if 'iminuit' in opts.fit_tool:
-        if opts.dataset == 'testing_data':
-            ls_pars = get_conditions(opts.file_number, opts.model_path)[0]
-        else:
-            # kb = 15.45, fc = 0.525, LY = 10100
-            ls_pars = [0.525, 0.525, 0.525]
-        init_pars = list(ls_pars) + [1]*len(list(opts.sources))
-        m = perform_minuit_fit(chi2_like, init_pars, opts)
+        ls_pars_init = list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
+        init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
+
+        m = perform_minuit_fit(chi2_like, init_pars, opts, cholesky_cov)
     if 'FC' in opts.fit_tool:
-        if opts.dataset == 'testing_data':
-            ls_pars = get_conditions(opts.file_number, opts.model_path)[0]
-        else:
-            # kb = 15.45, fc = 0.525, LY = 10100
-            ls_pars = [0.525, 0.525, 0.525]
-        init_pars = list(ls_pars) + [1]*len(list(opts.sources))
-        m = perform_fc_fit(chi2_like, init_pars, init_pars, opts)
+        ls_pars_init = list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
+        init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
+        ls_pars_true = list(solve_triangular(cholesky_cov, [0.525, 0.525, 0.525], lower=True))
+        true_pars = list(ls_pars_true) + [1]*len(list(opts.sources))
+
+        m = perform_fc_fit(chi2_like, init_pars, true_pars, opts, cholesky_cov)
 
 
 if __name__ == '__main__':
