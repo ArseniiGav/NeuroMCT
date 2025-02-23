@@ -104,7 +104,7 @@ def perform_mh_fit(log_likelihood_fn, opts):
     sampler = SamplerMH(log_likelihood_fn, initial_pos, cov, par_names, rng)
     sampler.estimate_covariance(10, 1000, 10000)
     sampler.sample(opts.n_samples)
-    outname = f"mcmc-mh-{'-'.join(opts.sources)}"
+    outname = f"mcmc-mh-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     sampler.save(opts.output, outname, metadata=vars(opts))
     return sampler
 
