@@ -70,18 +70,22 @@ def read_data(data_path, sources):
     return data_dict
 
 class Model:
-    def __init__(self, source, integral, model_type='tede', device='cpu', path_to_models=None):
+    def __init__(self, source, integral,
+            bin_width=0.02, cholesky_cov=None, model_type='tede', device='cpu', path_to_models=None):
         self._source_n = source_to_number[source]
         self._integral = integral
+        self._bin_width = bin_width
+        self._cholesky_cov = cholesky_cov
         self._model = setup(model_type, device, path_to_models)
 
     def __call__(self, pars):
         kb, fc, ly, n = pars
+        if self._cholesky_cov:
+            kb, fc, ly = self._cholesky_cov @ [kb, fc, ly]
         nl_pars = tensor([kb, fc, ly], dtype=float32).unsqueeze(0)
-        bin_width = 0.02
         out = self._model(
                 nl_pars, tensor([[self._source_n]], dtype=int32)
-                ).detach().numpy()[0] * self._integral * bin_width
+                ).detach().numpy()[0] * self._integral * self._bin_width
         return n * out
 
 def cost_funs_sum_wrapper(cost_funs):
