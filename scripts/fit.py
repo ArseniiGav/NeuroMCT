@@ -10,7 +10,7 @@ from uproot import open as open_root
 import numpy as np
 
 from neuromct.configs import data_configs
-from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio
+from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio, NegativeLogLikelihood
 from neuromct.models.ml import setup
 
 import os
