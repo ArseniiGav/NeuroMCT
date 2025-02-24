@@ -133,7 +133,7 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
         pickle_dump(result, file)
     return result
 
-def perform_minuit_fit(chi2, par_init, opts, cholesky_cov):
+def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
     m.precision = 1e-7
     # m.print_level = 3
@@ -159,7 +159,8 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov):
     result['fun'] = m.fval
     result['covariance'] = np.array(m.covariance)
     result['corr'] = np.array(m.covariance.correlation())
-    result['cholesky_cov'] = cholesky_cov
+    if cholesky_cov is not None:
+        result['cholesky_cov'] = cholesky_cov
 
     xdict, errorsdict, profiles_dict = dict(), dict(), defaultdict(dict)
     for m_name, phys_name in zip(m.parameters[:3], par_names):
@@ -183,7 +184,7 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov):
         pickle_dump(result, file)
     return m
 
-def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov):
+def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
     m.precision = 1e-7
     par_edges = [(0, 56), (0, 220), (0, 2506)] # + [(0.7, 1.3)]*len(list(opts.sources))
@@ -229,7 +230,7 @@ def read_data_eos(common_eos_path, dataset, file_n, sources):
 def main(opts):
     # data_dict = read_data(opts.data, opts.sources)
     data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources)
-    cholesky_cov = np.load('average_cov_cholesky_decomposed.npy')
+    cholesky_cov = None # np.load('average_cov_cholesky_decomposed.npy')
 
     log_likelihoods = list()
     chi2s = list()
@@ -249,14 +250,14 @@ def main(opts):
     if 'ultranest' in opts.fit_tool:
         result = perform_ultranest_fit(log_likelihood_sum, opts)
     if 'iminuit' in opts.fit_tool:
-        ls_pars_init = list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
+        ls_pars_init = [0.5]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
         init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
 
         m = perform_minuit_fit(chi2_like, init_pars, opts, cholesky_cov)
     if 'FC' in opts.fit_tool:
-        ls_pars_init = list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
+        ls_pars_init = [0.5]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
         init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
-        ls_pars_true = list(solve_triangular(cholesky_cov, [0.525, 0.525, 0.525], lower=True))
+        ls_pars_true = [0.525]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.525, 0.525, 0.525], lower=True))
         true_pars = list(ls_pars_true) + [1]*len(list(opts.sources))
 
         m = perform_fc_fit(chi2_like, init_pars, true_pars, opts, cholesky_cov)
