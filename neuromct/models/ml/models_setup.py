@@ -1,14 +1,17 @@
 import torch
 
 from .tede import TEDE
+from .nfde import NFDE
 from ...configs import data_configs
 from ...utils import tede_argparse
-# from NF import FlowsModel
 
 def setup(model_type, device, path_to_models=None):
+    path_to_models = path_to_models if path_to_models is not None \
+            else data_configs['path_to_models']
+
     if model_type == 'tede':
         args = tede_argparse()
-        model = TEDE(
+        tede = TEDE(
             n_sources=args.n_sources,
             output_dim=args.output_dim,
             d_model=args.d_model,
@@ -21,30 +24,32 @@ def setup(model_type, device, path_to_models=None):
             bin_size=data_configs['bin_size']
         ).float().to(device)
 
-        path_to_models = path_to_models if path_to_models is not None \
-                else data_configs['path_to_models']
-        model.load_state_dict(
+        tede.load_state_dict(
             torch.load(
                 f"{path_to_models}/tede_model.pth", 
                 map_location=device,
                 weights_only=True
             )
         )
-        model.eval()
-        return model
-
+        tede.eval()
+        return tede
     elif model_type == 'nfde':
-        nf_model = FlowsModel(base_type=base_type,
-                flow_type=flow_type,
-                N_conditions=N_conditions,
-                num_layers=num_layers,
-                lr=lr,
-                loss_function=loss_function,
-                sources=sources
-        ).to(device)
-        nf_model.load_state_dict(torch.load(path, map_location=device))
-        nf_model.eval()
+        nfde = NFDE(
+            n_flows=args.n_flows,
+            activation=args.activation_function,
+            n_conditions=args.n_conditions,
+            base_type=args.base_type,
+            flow_type=args.flow_type
+        ).float().to(device)
 
-        return nf_model
+        nfde.load_state_dict(
+            torch.load(
+                f"{path_to_models}/tede_model.pth", 
+                map_location=device,
+                weights_only=True
+            )
+        )
+        nfde.eval()
+        return nfde
     else:
         raise ValueError("Model type should be 'tede' or 'nfde'")

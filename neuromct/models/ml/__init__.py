@@ -4,4 +4,6 @@ from .metrics import __init__
 from .modules import __init__
 from .tede import TEDE
 from .tede_lightning_training import TEDELightningTraining
+from .nfde import NFDE
+from .nfde_lightning_training import NFDELightningTraining
 from .models_setup import setup
