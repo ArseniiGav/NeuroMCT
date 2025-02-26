@@ -10,10 +10,11 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import CSVLogger
 
-from neuromct.models.ml import TEDE, TEDELightningTraining
+from neuromct.models.ml import TEDE
+from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
+from neuromct.models.ml.lightning_models import TEDELightningTraining
 from neuromct.models.ml.losses import GeneralizedKLDivLoss
 from neuromct.models.ml.metrics import LpNormDistance
-from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
 from neuromct.configs import data_configs
 from neuromct.utils import tede_argparse
 from neuromct.utils import create_dataset

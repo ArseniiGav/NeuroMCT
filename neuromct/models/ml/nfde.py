@@ -8,8 +8,9 @@ class Flow(nn.Module):
     def __init__(self,
             n_conditions: int,
             n_sources: int,
+            n_units: int,
             activation: str,
-            flow_type: str
+            flow_type: str, 
         ):
         super().__init__()
         self.activation = activation
@@ -17,33 +18,34 @@ class Flow(nn.Module):
 
         n_params = n_conditions - 1
         self.param_net = nn.Sequential(
-            nn.Linear(n_params, 10),
-            nn.LayerNorm(10),
+            nn.Linear(n_params, n_units),
+            nn.LayerNorm(n_units),
             nn.ReLU() if activation == 'relu' else nn.GELU(),
-            nn.Linear(10, 10),
-            nn.LayerNorm(10),
+            nn.Linear(n_units, n_units),
+            nn.LayerNorm(n_units),
             nn.ReLU() if activation == 'relu' else nn.GELU(),
-            nn.Linear(10, 10),
+            nn.Linear(n_units, n_units),
         )
-        self.source_type_embedding = nn.Embedding(n_sources, 10)
+        self.source_type_embedding = nn.Embedding(n_sources, n_units)
 
+        n_units_combined = n_units * 2
         self.conditions_to_params_net = nn.Sequential(
-                nn.Linear(20, 20),
-                nn.LayerNorm(20),
+                nn.Linear(n_units_combined, n_units_combined),
+                nn.LayerNorm(n_units_combined),
                 nn.ReLU() if activation == 'relu' else nn.GELU(),
-                nn.Linear(20, 10),
-                nn.LayerNorm(10),
+                nn.Linear(n_units_combined, n_units_combined // 2),
+                nn.LayerNorm(n_units_combined // 2),
                 nn.ReLU() if activation == 'relu' else nn.GELU(),
-                nn.Linear(10, 3),
+                nn.Linear(n_units_combined // 2, 3),
             )
 
     def forward(self, x, params, source_types):
         x = x.squeeze(1)
-        params_emb = self.param_net(params) # [B, param_dim] -> [B, 10]
+        params_emb = self.param_net(params) # [B, param_dim] -> [B, n_units]
         source_types = source_types.squeeze(1) # [B, 1] -> [B]
-        source_types_emb = self.source_type_embedding(source_types) # [B] -> [B, 10]
-        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=1) # [B, 20]
-        flow_params = self.conditions_to_params_net(input_emb_cat) # [B, 20] -> [B, 3]
+        source_types_emb = self.source_type_embedding(source_types) # [B] -> [B, n_units]
+        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=1) # [B, n_units * 2]
+        flow_params = self.conditions_to_params_net(input_emb_cat) # [B, n_units * 2] -> [B, 3]
         if self.flow_type == 'planar':
             self.w = torch.tanh(flow_params[:, 0])
             self.u = torch.tanh(flow_params[:, 1])
@@ -74,11 +76,11 @@ class Flow(nn.Module):
         z = z.squeeze(1)
         x0 = torch.rand(z.shape, device=z.device, requires_grad=True)
 
-        params_emb = self.param_net(params) # [B, param_dim] -> [B, 10]
+        params_emb = self.param_net(params) # [B, param_dim] -> [B, n_units]
         source_types = source_types.squeeze(1) # [B, 1] -> [B]
-        source_types_emb = self.source_type_embedding(source_types) # [B] -> [B, 10]
-        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=1) # [B, 20]
-        flow_params = self.conditions_to_params_net(input_emb_cat) # [B, 20] -> [B, 3]
+        source_types_emb = self.source_type_embedding(source_types) # [B] -> [B, n_units]
+        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=1) # [B, n_units * 2]
+        flow_params = self.conditions_to_params_net(input_emb_cat) # [B, n_units * 2] -> [B, 3]
         if self.flow_type == 'planar':
             self.w = torch.tanh(flow_params[:, 0])
             self.u = torch.tanh(flow_params[:, 1])
@@ -121,33 +123,50 @@ class Flow(nn.Module):
 class NFDE(nn.Module):
     def __init__(self, 
             n_flows: int,
-            activation: str,
             n_conditions: int,
-            base_type: str,
+            n_sources: int,
+            n_units: int,
+            activation: str,
             flow_type: str,
+            base_type: str,
         ):
         super(NFDE, self).__init__()
 
         self.flows = self._flows_block(
-            n_flows, n_conditions, activation, flow_type)
+            n_flows, n_conditions, n_sources, 
+            n_units, activation, flow_type
+        )
         self.base_type = base_type
-        self.pi = torch.tensor(math.pi)
+        self.pi = torch.tensor(math.pi, dtype=torch.float32)
+        if self.base_type == 'uniform':
+            self.lb = 0.0
+            self.rb = 20.0
 
-    def _flows_block(self, n_flows, n_conditions, activation, flow_type):
+    def _flows_block(self, 
+            n_flows: int, 
+            n_conditions: int, 
+            n_sources: int, 
+            n_units: int, 
+            activation: str, 
+            flow_type: str
+        ):
         flows_block_list = []
         for _ in range(n_flows):
-            flows_block_list.append(Flow(n_conditions, activation, flow_type))
+            flows_block_list.append(
+                Flow(n_conditions, n_sources, 
+                     n_units, activation, flow_type)
+            )
         flows_block_module_list = nn.ModuleList(flows_block_list)
         return flows_block_module_list
 
     def _log_prob_comp(self, x, params, source_types):
         z, log_det_jacobian = self.forward(x, params, source_types)
         if self.base_type == 'uniform':
-            within_bounds = (z >= 0.0) & (z <= 20.0)
+            within_bounds = (z >= self.lb) & (z <= self.rb)
             base_log_prob = torch.where(
                 within_bounds,
-                torch.full_like(z, -torch.log(torch.tensor(20.0, device=z.device))),
-                torch.full_like(z, 0.0)
+                torch.full_like(z, -torch.log(self.rb - self.lb)),
+                torch.full_like(z, self.lb)
             )
             base_log_prob = base_log_prob.sum(dim=1)
         elif self.base_type == 'normal':
@@ -183,12 +202,14 @@ class NFDE(nn.Module):
         return base_log_prob + log_det_jacobian
 
     def generate_energies(self, n_energies, params, source_types):
+        self.eval()
         with torch.no_grad():
             if self.base_type == 'uniform':
-                z = torch.rand(n_energies, 1).to(params.device) * 20
+                z = torch.rand(n_energies, 1).to(params.device) * (self.rb - self.lb) + self.lb
             elif self.base_type == 'normal':
                 z = torch.randn(n_energies, 1).to(params.device)
             elif self.base_type == 'lognormal':
                 z = torch.exp(torch.randn(n_energies, 1).to(params.device))
             x = self.inverse(z, params, source_types)
-            return x
+        self.train()
+        return x

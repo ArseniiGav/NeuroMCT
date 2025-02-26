@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from lightning import LightningModule
 
-from .metrics import LpNormDistance
+from ..metrics import LpNormDistance
 
 
 class NFDELightningTraining(LightningModule):
@@ -39,9 +39,9 @@ class NFDELightningTraining(LightningModule):
         self.train_loss_to_plot = []
 
         if self.loss_function == 'wasserstein':
-            self.wasserstein_1d = LpNormDistance(p=1)
+            self.wasserstein_loss = LpNormDistance(p=1)
         elif self.loss_function == "cramer":
-            self.cramer_1d = LpNormDistance(p=2)
+            self.cramer_loss = LpNormDistance(p=2)
 
     def _compute_and_log_val_metrics(self, spectra_predict, spectra_true, data_type):
         metrics = dict()
@@ -107,10 +107,10 @@ class NFDELightningTraining(LightningModule):
 
             if self.loss_function == 'wasserstein':
                 x = self.inverse(z, params, source_types)
-                loss = self.wasserstein_1d(real_energies, x)
+                loss = self.wasserstein_loss(real_energies, x)
             elif self.loss_function == 'cramer':
                 x = self.inverse(z, params, source_types)
-                loss = self.cramer_1d(real_energies, x)
+                loss = self.cramer_loss(real_energies, x)
 
         self.log(f"training_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
         self.train_loss_to_plot.append(loss.item())

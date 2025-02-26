@@ -17,10 +17,11 @@ import optuna
 from optuna.integration import PyTorchLightningPruningCallback
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-from neuromct.models.ml import TEDE, TEDELightningTraining
+from neuromct.models.ml import TEDE
+from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
+from neuromct.models.ml.lightning_models import TEDELightningTraining
 from neuromct.models.ml.losses import GeneralizedKLDivLoss
 from neuromct.models.ml.metrics import LpNormDistance
-from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
 from neuromct.configs import data_configs
 from neuromct.utils import create_dataset
 from neuromct.utils import define_transformations
