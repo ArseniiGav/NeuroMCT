@@ -1,0 +1,20 @@
+{
+    "n_sources": 5,
+    "n_flows": 25,
+    "n_units": 20,
+    "flow_type": "planar",
+    "base_type": "normal",
+    "activation_function": "gelu",
+    "learning_rate": 0.0002602685913262217,
+    "optimizer": "AdamW",
+    "lr_scheduler": "ReduceLROnPlateau",
+    "batch_size": 256,
+    "weight_decay": 0.009495617703993944,
+    "reduction_factor": 0.9,
+    "beta1": 0.85,
+    "beta2": 0.946,
+    "accelerator": "gpu",
+    "monitor_metric": "val_cramer_metric",
+    "seed": 22,
+    "n_energies_to_gen": 100000
+}

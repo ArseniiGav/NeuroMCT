@@ -120,7 +120,7 @@ class NFDELightningTraining(LightningModule):
         real_energies, params, source_types = batch
 
         gen_energies = []
-        for i in range(batch.shape[0]):
+        for i in range(real_energies.shape[0]):
             gen_energies_per_condition = self.model.generate_energies(
                 self.n_energies_to_gen, params[i, :], source_types[i, :])
             gen_energies.append(gen_energies_per_condition)
