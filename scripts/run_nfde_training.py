@@ -10,63 +10,47 @@ from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from lightning.pytorch.loggers import CSVLogger
 
-from neuromct.models.ml import TEDE
+from neuromct.models.ml import NFDE
 from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
-from neuromct.models.ml.lightning_models import TEDELightningTraining
-from neuromct.models.ml.losses import GeneralizedKLDivLoss
+from neuromct.models.ml.lightning_models import NFDELightningTraining
 from neuromct.models.ml.metrics import LpNormDistance
 from neuromct.configs import data_configs
 from neuromct.utils import (
-    tede_argparse,
+    nfde_argparse,
     create_dataset,
-    define_transformations,
     res_visualizator_setup
 )
 
-approach_type = 'tede'
+approach_type = 'nfde'
 base_path_to_models = data_configs['base_path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
-path_to_tede_training_results = data_configs['path_to_tede_training_results']
+path_to_nfde_training_results = data_configs['path_to_nfde_training_results']
 
-os.makedirs(f'{path_to_tede_training_results}', exist_ok=True)
-os.makedirs(f'{path_to_tede_training_results}/plots', exist_ok=True)
-os.makedirs(f'{path_to_tede_training_results}/predictions', exist_ok=True)
+os.makedirs(f'{path_to_nfde_training_results}', exist_ok=True)
+os.makedirs(f'{path_to_nfde_training_results}/plots', exist_ok=True)
+os.makedirs(f'{path_to_nfde_training_results}/predictions', exist_ok=True)
 
-kNPE_bins_edges = data_configs['kNPE_bins_edges']
-kNPE_bins_centers = (kNPE_bins_edges[:-1] + kNPE_bins_edges[1:]) / 2
-kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float32)
-bin_size = data_configs['bin_size']
+# model_res_visualizator = res_visualizator_setup(data_configs)
 
-model_res_visualizator = res_visualizator_setup(data_configs)
-
-args = tede_argparse()
+args = nfde_argparse()
 seed_everything(args.seed, workers=True)
-
-# Poisson noise + pdf constuction
-training_data_transformations = define_transformations("training", bin_size)
-
-# pdf constuction only
-val_data_transformations = define_transformations("val", bin_size) 
 
 train_data = create_dataset(
     "training", 
     path_to_processed_data, 
-    approach_type,
-    training_data_transformations
+    approach_type
 )
 val1_data = create_dataset(
     "val1", 
     path_to_processed_data, 
-    approach_type,
-    val_data_transformations
+    approach_type
 )
 val2_data = []
 for i in range(3):
     val2_i_data = create_dataset(
         f"val2_{i+1}", 
         path_to_processed_data, 
-        approach_type,
-        val_data_transformations, 
+        approach_type, 
         val2_rates=True
     )
     val2_data.append(val2_i_data)
@@ -94,8 +78,7 @@ val2_loader = DataLoader(
     pin_memory=True
 )
 
-kl_div = GeneralizedKLDivLoss(
-    log_input=False, log_target=False, reduction='batchmean')
+loss_function = "kl-div"
 wasserstein_distance = LpNormDistance(p=1) # Wasserstein distance
 cramer_distance = LpNormDistance(p=2) # Cramér-von Mises distance
 ks_distance = LpNormDistance(p=torch.inf) # Kolmogorov-Smirnov distance
@@ -131,45 +114,42 @@ checkpoint_callback = ModelCheckpoint(
     save_top_k=1, monitor=monitor_metric, mode="min")
 early_stopping_callback = EarlyStopping(
     monitor=monitor_metric, mode="min", patience=200)
-res_visualizer_callback = ModelResultsVisualizerCallback(
-    res_visualizer=model_res_visualizator,
-    base_path_to_savings=path_to_tede_training_results,
-    plots_dir_name='plots',
-    predictions_dir_name='predictions'
-)
+# res_visualizer_callback = ModelResultsVisualizerCallback(
+#     res_visualizer=model_res_visualizator,
+#     base_path_to_savings=path_to_nfde_training_results,
+#     plots_dir_name='plots',
+#     predictions_dir_name='predictions'
+# )
 
 logger = CSVLogger(
-    save_dir=path_to_tede_training_results, 
+    save_dir=path_to_nfde_training_results, 
     name=f"training_logs"
 )
 
-tede_model = TEDE(
+nfde_model = NFDE(
+    n_flows=args.n_flows,
+    n_conditions=data_configs['n_conditions'],
     n_sources=args.n_sources,
-    output_dim=args.output_dim,
-    d_model=args.d_model,
+    n_units=args.n_units,
     activation=args.activation_function,
-    nhead=args.nhead,
-    num_encoder_layers=args.num_encoder_layers,
-    dim_feedforward=args.dim_feedforward,
-    dropout=args.dropout,
-    temperature=args.temperature,
-    bin_size=bin_size
+    flow_type=args.flow_type,
+    base_type=args.base_type
 )
 
-tede_model_lightning_training = TEDELightningTraining(
-    model=tede_model,
-    loss_function=kl_div,
+nfde_model_lightning_training = NFDELightningTraining(
+    model=nfde_model,
+    loss_function=loss_function,
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
     optimizer_hparams=optimizer_hparams,
     lr=args.lr,
     weight_decay=args.weight_decay,
-    bins_centers=kNPE_bins_centers,
-    monitor_metric=args.monitor_metric
+    monitor_metric=args.monitor_metric,
+    n_energies_to_gen=args.n_energies_to_gen
 )
 
-trainer_tede = Trainer(
+trainer_nfde = Trainer(
     max_epochs=2000,
     accelerator=args.accelerator,
     devices="auto",
@@ -177,15 +157,15 @@ trainer_tede = Trainer(
     callbacks=[
         checkpoint_callback,
         early_stopping_callback,
-        res_visualizer_callback,
+        # res_visualizer_callback,
         LearningRateMonitor(),
     ],
     logger=logger,
     enable_checkpointing=True,
 )
 
-trainer_tede.fit(
-    tede_model_lightning_training,
+trainer_nfde.fit(
+    nfde_model_lightning_training,
     train_dataloaders=train_loader,
     val_dataloaders=[
       val1_loader,
@@ -193,21 +173,21 @@ trainer_tede.fit(
     ]
 )
 
-best_tede_model = TEDELightningTraining.load_from_checkpoint(
+best_nfde_model = NFDELightningTraining.load_from_checkpoint(
     checkpoint_path=checkpoint_callback.best_model_path,
-    model=tede_model,
-    loss_function=kl_div,
+    model=nfde_model,
+    loss_function=loss_function,
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
     optimizer_hparams=optimizer_hparams,
     lr=args.lr,
     weight_decay=args.weight_decay,
-    bins_centers=kNPE_bins_centers,
-    monitor_metric=args.monitor_metric
+    monitor_metric=args.monitor_metric,
+    n_energies_to_gen=args.n_energies_to_gen
 )
 
 torch.save(
-    best_tede_model.model.state_dict(), 
-    f"{base_path_to_models}/models/tede_model.pth"
+    best_nfde_model.model.state_dict(), 
+    f"{base_path_to_models}/models/nfde_model.pth"
 )

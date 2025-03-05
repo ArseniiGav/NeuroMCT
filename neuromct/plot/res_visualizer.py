@@ -1,7 +1,10 @@
 import numpy as np
 import torch
 
-from ..dataset import load_minimax_scaler, load_processed_data
+from ..dataset import (
+    load_minimax_scaler, 
+    load_processed_data
+)
 
 import matplotlib.pyplot as plt
 from .matplotlib_setup import matplotlib_setup

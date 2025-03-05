@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .modules import Entmax, Softmax
+from .modules import Softmax
 
 
 class TEDE(nn.Module):

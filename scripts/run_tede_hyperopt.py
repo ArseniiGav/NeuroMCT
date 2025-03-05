@@ -6,25 +6,28 @@ import json
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
+
 from lightning import Trainer
 from lightning.pytorch import seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import CSVLogger
 
 import optuna
 from optuna.integration import PyTorchLightningPruningCallback
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-from neuromct.models.ml import TEDE, TEDELightningTraining
+from neuromct.models.ml import TEDE
+from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
+from neuromct.models.ml.lightning_models import TEDELightningTraining
 from neuromct.models.ml.losses import GeneralizedKLDivLoss
 from neuromct.models.ml.metrics import LpNormDistance
-from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
 from neuromct.configs import data_configs
-from neuromct.utils import create_dataset
-from neuromct.utils import define_transformations
-from neuromct.utils import res_visualizator_setup
+from neuromct.utils import (
+    create_dataset,
+    define_transformations,
+    res_visualizator_setup
+)
 
 parser = argparse.ArgumentParser(description='Run the hyperparameter optimization for the TEDE model')
 parser.add_argument("--n_trials", type=int, default=100,
@@ -40,7 +43,7 @@ parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
                                 Default=val_cramer_metric.''')
 args = parser.parse_args()
 
-path_to_models = data_configs['path_to_models']
+approach_type = 'tede'
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_tede_hopt_results = data_configs['path_to_tede_hopt_results']
 
@@ -73,11 +76,13 @@ val_data_transformations = define_transformations("val", bin_size)
 train_data = create_dataset(
     "training", 
     path_to_processed_data, 
+    approach_type,
     training_data_transformations
 )
 val1_data = create_dataset(
     "val1", 
     path_to_processed_data, 
+    approach_type,
     val_data_transformations
 )
 val2_data = []
@@ -85,6 +90,7 @@ for i in range(3):
     val2_i_data = create_dataset(
         f"val2_{i+1}", 
         path_to_processed_data,
+        approach_type,
         val_data_transformations,
         val2_rates=True
     )
@@ -113,7 +119,7 @@ def objective(trial):
         save_top_k=1, monitor=args.monitor_metric, mode="min")
     
     early_stopping_callback = EarlyStopping(
-        monitor=args.monitor_metric, mode="min", patience=100)
+        monitor=args.monitor_metric, mode="min", patience=200)
     
     res_visualizer_callback = ModelResultsVisualizerCallback(
         res_visualizer=model_res_visualizator,
@@ -291,6 +297,12 @@ def objective(trial):
 
 # Create an Optuna study and run optimization
 storage_path = f"{path_to_tede_hopt_results}/seed_{args.seed}/tede_study.db"
+
+if os.path.exists(storage_path) == False:
+    use_initials = True
+else:
+    use_initials = False
+
 study = optuna.create_study(
     study_name="tede_hp_optimization",
     storage=f"sqlite:///{storage_path}",
@@ -301,7 +313,7 @@ study = optuna.create_study(
         min_resource=50, max_resource="auto", reduction_factor=3),
 )
 
-if os.path.exists(storage_path) == False:
+if use_initials:
     # initial hyperparameters
     initial_hparams = {
         'd_model': 100,

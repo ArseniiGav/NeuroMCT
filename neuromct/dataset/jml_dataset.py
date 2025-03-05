@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset
+
 from .load_data import load_processed_data
 
 
@@ -7,6 +8,7 @@ class JMLDataset(Dataset):
             self,
             dataset_type: str,
             path_to_processed_data: str,
+            approach_type: str,
             transform=False,
             val2_rates=False
         ):
@@ -14,10 +16,11 @@ class JMLDataset(Dataset):
         Args:
             dataset_type (str): Type of the dataset ('training', 'val1', 'val2_1', 'val2_2', or 'val2_3').
             path_to_processed_data (str): Path to the directory containing the processed data files.
+            approach_type (str): Type of the approach ('tede' or 'nfde').
             transform (callable, optional): A function/transform to apply to the spectra.
         """
         self.spectra, self.params, self.source_types = load_processed_data(
-            dataset_type, path_to_processed_data, val2_rates) 
+            dataset_type, path_to_processed_data, approach_type, val2_rates) 
         self.transform = transform
 
         # Verify data consistency

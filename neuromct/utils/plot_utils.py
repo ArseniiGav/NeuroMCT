@@ -3,7 +3,7 @@ from ..plot import ModelResultsVisualizer
 def res_visualizator_setup(configs):
     plot_every_n_steps = configs['plot_every_n_steps']
     path_to_processed_data = configs['path_to_processed_data']
-    path_to_models = configs['path_to_models']
+    base_path_to_models = configs['base_path_to_models']
 
     n_sources = configs['n_sources']
     sources_names_to_vis = configs['sources_names_to_vis']
@@ -24,7 +24,7 @@ def res_visualizator_setup(configs):
 
     model_results_visualizer = ModelResultsVisualizer(
         plot_every_n_steps=plot_every_n_steps,
-        path_to_scaler=path_to_models,
+        path_to_scaler=base_path_to_models,
         path_to_processed_data=path_to_processed_data,
         n_sources=n_sources,
         sources_names_to_vis=sources_names_to_vis,
