@@ -6,7 +6,7 @@ def tede_argparse():
     configs_path = pkg_resources.resource_filename("neuromct", "configs/")
 
     parser = argparse.ArgumentParser(description='Hyperparameters of the TEDE model')
-    parser.add_argument("--config", type=str, default=f'{configs_path}/tede_training_configs.json',
+    parser.add_argument("--config", type=str, default=f'{configs_path}/tede_configs.json',
                          help="The path to the JSON config file")
     parser.add_argument("--n_sources", type=int, default=5,
                          help='The number of calibration sources (default=5).')
