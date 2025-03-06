@@ -17,11 +17,12 @@ n_bins = bins.shape[0] - 1
 
 data_configs = {
     # paths' configs
-    "path_to_models": "./models", 
+    "base_path_to_models": "./", 
     "path_to_processed_data": "/storage/jmct_paper/processed_data", 
-    "path_to_raw_data": "/mnt/arsenii/NeuroMCT/kB_fC_LY_10k_events",
     "path_to_tede_hopt_results": "/storage/jmct_paper/results/tede_hyperopt",
     "path_to_tede_training_results": "/storage/jmct_paper/results/tede_training",
+    "path_to_nfde_hopt_results": "/storage/jmct_paper/results/nfde_hyperopt",
+    "path_to_nfde_training_results": "/storage/jmct_paper/results/nfde_training",
 
     # sources' configs
     "n_sources": 5,
@@ -43,17 +44,6 @@ data_configs = {
     "base_value_to_vis_val1": torch.tensor(
         0.4750, dtype=torch.float32),
 
-    # data processing configs
-    "training_grid_size": 21,
-    "kB_training_grid_lims": (6, 24.1, 0.9), # g/cm2/GeV
-    "fC_training_grid_lims": (0, 1.01, 0.05),
-    "LY_training_grid_lims": (8000, 12001, 200), # 1 / MeV
-    
-    "val1_grid_size": 10,
-    "kB_val1_grid_lims": (7.35, 24, 1.8), # g/cm2/GeV
-    "fC_val1_grid_lims": (0.075, 1, 0.1),
-    "LY_val1_grid_lims": (8300, 12000, 400), # 1 / MeV
-
     "val2_n_datasets": 1000,
     "kB_val2_values": (7.35, 14.55, 23.55),
     "fC_val2_values": (0.075, 0.475, 0.975),
@@ -62,5 +52,6 @@ data_configs = {
     "bin_size": bin_size, # kNPE
     "kNPE_bins_edges": bins, # kNPE
     "n_bins": n_bins,
-    "params_dim": 3 # kB, fC, LY
+    "params_dim": 3, # kB, fC, LY
+    "n_conditions": 4 # kB, fC, LY, source_type
 }

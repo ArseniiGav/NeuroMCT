@@ -1,14 +1,20 @@
 import torch
 
 from .tede import TEDE
+from .nfde import NFDE
 from ...configs import data_configs
-from ...utils import tede_argparse
-# from NF import FlowsModel
+from ...utils import (
+    tede_argparse,
+    nfde_argparse
+)
 
-def setup(model_type, device, path_to_models=None):
+def setup(model_type, device, base_path_to_models=None):
+    base_path_to_models = base_path_to_models if base_path_to_models is not None \
+            else data_configs['base_path_to_models']
+    
     if model_type == 'tede':
         args = tede_argparse()
-        model = TEDE(
+        tede_model = TEDE(
             n_sources=args.n_sources,
             output_dim=args.output_dim,
             d_model=args.d_model,
@@ -21,30 +27,35 @@ def setup(model_type, device, path_to_models=None):
             bin_size=data_configs['bin_size']
         ).float().to(device)
 
-        path_to_models = path_to_models if path_to_models is not None \
-                else data_configs['path_to_models']
-        model.load_state_dict(
+        tede_model.load_state_dict(
             torch.load(
-                f"{path_to_models}/tede_model.pth", 
+                f"{base_path_to_models}/models/tede_model.pth", 
                 map_location=device,
                 weights_only=True
             )
         )
-        model.eval()
-        return model
-
+        tede_model.eval()
+        return tede_model
     elif model_type == 'nfde':
-        nf_model = FlowsModel(base_type=base_type,
-                flow_type=flow_type,
-                N_conditions=N_conditions,
-                num_layers=num_layers,
-                lr=lr,
-                loss_function=loss_function,
-                sources=sources
-        ).to(device)
-        nf_model.load_state_dict(torch.load(path, map_location=device))
-        nf_model.eval()
+        args = nfde_argparse()
+        nfde_model = NFDE(
+            n_flows=args.n_flows,
+            n_conditions=data_configs['n_conditions'],
+            n_sources=args.n_sources,
+            n_units=args.n_units,
+            activation=args.activation_function,
+            flow_type=args.flow_type,
+            base_type=args.base_type
+        ).float().to(device)
 
-        return nf_model
+        nfde_model.load_state_dict(
+            torch.load(
+                f"{base_path_to_models}/models/nfde_model.pth", 
+                map_location=device,
+                weights_only=True
+            )
+        )
+        nfde_model.eval()
+        return nfde_model
     else:
         raise ValueError("Model type should be 'tede' or 'nfde'")

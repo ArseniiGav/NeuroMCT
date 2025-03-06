@@ -27,6 +27,5 @@ setup(
         "torchvision==0.19.0",
         "tqdm==4.65.0",
         "uproot==5.3.3",
-        "entmax @ git+https://github.com/deep-spin/entmax.git@master#egg=entmax",
     ],
 )
