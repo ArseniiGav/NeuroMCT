@@ -3,24 +3,28 @@ import os
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, ConcatDataset
+
 from lightning import Trainer
 from lightning.pytorch import seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.callbacks import LearningRateMonitor
 from lightning.pytorch.loggers import CSVLogger
 
-from neuromct.models.ml import TEDE, TEDELightningTraining
+from neuromct.models.ml import TEDE
+from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
+from neuromct.models.ml.lightning_models import TEDELightningTraining
 from neuromct.models.ml.losses import GeneralizedKLDivLoss
 from neuromct.models.ml.metrics import LpNormDistance
-from neuromct.models.ml.callbacks import ModelResultsVisualizerCallback
 from neuromct.configs import data_configs
-from neuromct.utils import tede_argparse
-from neuromct.utils import create_dataset
-from neuromct.utils import define_transformations
-from neuromct.utils import res_visualizator_setup
+from neuromct.utils import (
+    tede_argparse,
+    create_dataset,
+    define_transformations,
+    res_visualizator_setup
+)
 
-path_to_models = data_configs['path_to_models']
+approach_type = 'tede'
+base_path_to_models = data_configs['base_path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_tede_training_results = data_configs['path_to_tede_training_results']
 
@@ -47,11 +51,13 @@ val_data_transformations = define_transformations("val", bin_size)
 train_data = create_dataset(
     "training", 
     path_to_processed_data, 
+    approach_type,
     training_data_transformations
 )
 val1_data = create_dataset(
     "val1", 
     path_to_processed_data, 
+    approach_type,
     val_data_transformations
 )
 val2_data = []
@@ -59,6 +65,7 @@ for i in range(3):
     val2_i_data = create_dataset(
         f"val2_{i+1}", 
         path_to_processed_data, 
+        approach_type,
         val_data_transformations, 
         val2_rates=True
     )
@@ -202,5 +209,5 @@ best_tede_model = TEDELightningTraining.load_from_checkpoint(
 
 torch.save(
     best_tede_model.model.state_dict(), 
-    f"{path_to_models}/tede_model.pth"
+    f"{base_path_to_models}/models/tede_model.pth"
 )

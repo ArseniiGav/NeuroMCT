@@ -1,1 +1,1 @@
-from .modules import Entmax, Softmax
+from .modules import Softmax
