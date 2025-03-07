@@ -5,7 +5,7 @@
     "flow_type": "planar",
     "base_type": "normal",
     "loss_function": "cramer",
-    "activation_function": "gelu",
+    "activation_function": "silu",
     "learning_rate": 1e-4,
     "optimizer": "AdamW",
     "lr_scheduler": "ReduceLROnPlateau",

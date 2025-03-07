@@ -100,8 +100,8 @@ class NFDELightningTraining(LightningModule):
                     eta_min=1e-6, verbose=False)
             return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
 
-    def forward(self, params, source_types):
-        return self.model(params, source_types)
+    def forward(self, x, params, source_types):
+        return self.model(x, params, source_types)
 
     def training_step(self, batch):
         real_energies, params, source_types = batch
@@ -114,20 +114,14 @@ class NFDELightningTraining(LightningModule):
             real_energies_no_nan = real_energies[i][no_nan_inds]
             if self.loss_function == 'kl-div':
                 base_log_prob, log_det_jacobian = self.model._log_prob_comp(
-                    real_energies_no_nan.unsqueeze(1), 
-                    params[i].unsqueeze(0), 
-                    source_types[i].unsqueeze(0)
+                    real_energies_no_nan, params[i], source_types[i]
                 )
                 base_log_prob_loss = -base_log_prob.mean()
                 log_det_jacobian_loss = -log_det_jacobian.mean()
                 loss = base_log_prob_loss + log_det_jacobian_loss
             else:
                 prob_x = torch.exp(
-                    self.model.log_prob(
-                        x.unsqueeze(1), 
-                        params[i].unsqueeze(0), 
-                        source_types[i].unsqueeze(0)
-                    )
+                    self.model.log_prob(x, params[i], source_types[i])
                 )
                 if self.loss_function == 'wasserstein':
                     loss = self.wasserstein_loss(
@@ -164,11 +158,7 @@ class NFDELightningTraining(LightningModule):
         prob_x_batch = []
         for i in range(batch_size):
             prob_x = torch.exp(
-                self.model.log_prob(
-                    x.unsqueeze(1), 
-                    params[i].unsqueeze(0), 
-                    source_types[i].unsqueeze(0)
-                )
+                self.model.log_prob(x, params[i], source_types[i])
             )
             prob_x_batch.append(prob_x)
         prob_x_batch = torch.vstack(prob_x_batch)
@@ -207,5 +197,3 @@ class NFDELightningTraining(LightningModule):
             self.log(f"val1_{name}_metric", val1_metrics_value, prog_bar=True)
             self.log(f"val2_{name}_metric", val2_metrics_value, prog_bar=True)
             self.log(f"val_{name}_metric", val_metrics_value, prog_bar=True)
-
-        print(self.val_metrics_values)
