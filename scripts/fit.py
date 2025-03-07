@@ -4,15 +4,18 @@ from lzma import open as lzma_open
 from iminuit import Minuit
 from pickle import dump as pickle_dump
 from pickle import load as pickle_load
-from torch import tensor, int64, float64, set_num_threads, set_num_interop_threads
+from torch import tensor, int32, float32, set_num_threads, set_num_interop_threads
 from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
 import numpy as np
+from scipy.linalg import solve_triangular
 
 from neuromct.configs import data_configs
-from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio
+from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio, NegativeLogLikelihood
 from neuromct.models.ml import setup
 
+import os
+os.environ['MKL_NUM_THREADS'] = '1'
 set_num_threads(1)
 set_num_interop_threads(1)
 
@@ -68,17 +71,22 @@ def read_data(data_path, sources):
     return data_dict
 
 class Model:
-    def __init__(self, source, integral, model_type='tede', device='cpu', path_to_models=None):
+    def __init__(self, source, integral,
+            bin_width=0.02, cholesky_cov=None, model_type='tede', device='cpu', path_to_models=None):
         self._source_n = source_to_number[source]
         self._integral = integral
+        self._bin_width = bin_width
+        self._cholesky_cov = cholesky_cov
         self._model = setup(model_type, device, path_to_models)
 
     def __call__(self, pars):
         kb, fc, ly, n = pars
-        nl_pars = tensor([kb, fc, ly], dtype=float64).unsqueeze(0)
+        if self._cholesky_cov is not None:
+            kb, fc, ly = self._cholesky_cov @ [kb, fc, ly]
+        nl_pars = tensor([kb, fc, ly], dtype=float32).unsqueeze(0)
         out = self._model(
-                nl_pars, tensor([[self._source_n]], dtype=int64)
-                ).detach().numpy()[0] * self._integral
+                nl_pars, tensor([[self._source_n]], dtype=int32)
+                ).detach().numpy()[0] * self._integral * self._bin_width
         return n * out
 
 def cost_funs_sum_wrapper(cost_funs):
@@ -101,7 +109,7 @@ def perform_mh_fit(log_likelihood_fn, opts):
     sampler = SamplerMH(log_likelihood_fn, initial_pos, cov, par_names, rng)
     sampler.estimate_covariance(10, 1000, 10000)
     sampler.sample(opts.n_samples)
-    outname = f"mcmc-mh-{'-'.join(opts.sources)}"
+    outname = f"mcmc-mh-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     sampler.save(opts.output, outname, metadata=vars(opts))
     return sampler
 
@@ -116,8 +124,8 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
 
     sampler = ReactiveNestedSampler(par_names, log_likelihood_fn, prior_transform)
     result = sampler.run(
-            # viz_callback=False,
-            # show_status=False,
+            viz_callback=False,
+            show_status=False,
             )
     # result['metadata'] = vars(opts)
     outname = f"ultranest-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
@@ -125,9 +133,11 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
         pickle_dump(result, file)
     return result
 
-def perform_minuit_fit(chi2, par_init, opts):
+def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
-    par_edges = [(0, 1)]*3 + [(0.7, 1.3)]*len(list(opts.sources))
+    m.precision = 1e-7
+    # m.print_level = 3
+    par_edges = [(0, 56), (0, 220), (0, 2506)] + [(0.9, 1.1)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
 
     # Set edges, make fit, unset edges, make fit
@@ -138,30 +148,20 @@ def perform_minuit_fit(chi2, par_init, opts):
         for p_name in m.pos2var:
             m.limits[p_name] = (None, None)
     m.migrad(ncall=100000)
-
-    # Scan near bf-value to ensure that we are in global minimum
-    # for par in ('x0', 'x1', 'x2',):
-    #     bf = m.params[par].value
-    #     m.limits[par] = (bf-0.1, bf+0.1)
-    # for par in m.parameters[3:]:
-    #     m.fixto(par, m.params[par].value)
-    # m.scan(ncall=20)
-
-    # # Make all parameters free
-    # for p_name in m.pos2var:
-    #     m.limits[p_name] = (None, None)
-    #     m.fixed[p_name] = False
-
-    # Make final fit
-    m.migrad()
     m.hesse()
+    m.migrad(ncall=100000)
     m.minos()
 
+    # Save results
     result = dict()
     result['valid'] = m.valid
     result['message'] = str(m.fmin)
     result['fun'] = m.fval
     result['covariance'] = np.array(m.covariance)
+    result['corr'] = np.array(m.covariance.correlation())
+    if cholesky_cov is not None:
+        result['cholesky_cov'] = cholesky_cov
+
     xdict, errorsdict, profiles_dict = dict(), dict(), defaultdict(dict)
     for m_name, phys_name in zip(m.parameters[:3], par_names):
         par = m.params[m_name]
@@ -184,9 +184,10 @@ def perform_minuit_fit(chi2, par_init, opts):
         pickle_dump(result, file)
     return m
 
-def perform_fc_fit(chi2, par_init, par_true, opts):
+def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
-    par_edges = [(0, 1)]*3 + [(0.7, 1.3)]*len(list(opts.sources))
+    m.precision = 1e-7
+    par_edges = [(0, 56), (0, 220), (0, 2506)] # + [(0.7, 1.3)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
     if par_edges:
         for par, edge in zip(m.parameters, par_edges):
@@ -197,13 +198,20 @@ def perform_fc_fit(chi2, par_init, par_true, opts):
     m.migrad()
     res_best = (m.valid, m.fmin.fval, m.values.to_dict())
 
-    m.fixto('x0', par_true[0])
-    m.migrad()
-    res_true = (m.valid, m.fmin.fval, m.values.to_dict())
+    res_dict = dict()
+    res_dict['res_best'] = res_best
+    for i, par in enumerate(('x0', 'x1', 'x2')):
+        m.fixto(par, par_true[i])
+        m.migrad()
+        res_dict[f'res_true_{par}'] = (m.valid, m.fmin.fval, m.values.to_dict())
+        m.fixed[par] = False
+        for p in ('x0', 'x1', 'x2',):
+            m.values[p] = res_best[-1][p]
+        # res_true = (m.valid, m.fmin.fval, m.values.to_dict())
 
     outname = f"FC-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
-        pickle_dump(dict(res_best=res_best, res_true=res_true), file)
+        pickle_dump(res_dict, file)
     return m
 
 def read_data_eos(common_eos_path, dataset, file_n, sources):
@@ -222,45 +230,43 @@ def read_data_eos(common_eos_path, dataset, file_n, sources):
 def main(opts):
     # data_dict = read_data(opts.data, opts.sources)
     data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources)
+    cholesky_cov = None # np.load('average_cov_cholesky_decomposed.npy')
 
     log_likelihoods = list()
+    chi2s = list()
     for source in opts.sources:
-        model = Model(source, np.sum(data_dict[source]), path_to_models=opts.model_path)
-        log_likelihoods.append(LogLikelihood(data_dict[source], model))
+        data = data_dict[source]
+        model = Model(source, np.sum(data), path_to_models=opts.model_path)
+        log_likelihoods.append(LogLikelihood(data, model))
+        if cholesky_cov is not None:
+            model = Model(source, np.sum(data),
+                          path_to_models=opts.model_path, cholesky_cov=cholesky_cov)
+        chi2s.append(LogLikelihoodRatio(data, model))
     log_likelihood_sum = cost_funs_sum_wrapper(log_likelihoods)
-
-    log_likelihoods = list()
-    for source in opts.sources:
-        model = Model(source, np.sum(data_dict[source]), path_to_models=opts.model_path)
-        log_likelihoods.append(LogLikelihoodRatio(data_dict[source], model))
-    chi2_like = cost_funs_sum_wrapper(log_likelihoods)
+    chi2_like = cost_funs_sum_wrapper(chi2s)
 
     if 'metropolis_hastings' in opts.fit_tool:
         sampler = perform_mh_fit(log_likelihood_sum, opts)
     if 'ultranest' in opts.fit_tool:
         result = perform_ultranest_fit(log_likelihood_sum, opts)
     if 'iminuit' in opts.fit_tool:
-        if opts.dataset == 'testing_data':
-            ls_pars = get_conditions(opts.file_number, opts.model_path)[0]
-        else:
-            # kb = 15.45, fc = 0.525, LY = 10100
-            ls_pars = [0.525, 0.525, 0.525]
-        init_pars = list(ls_pars) + [1]*len(list(opts.sources))
-        m = perform_minuit_fit(chi2_like, init_pars, opts)
+        ls_pars_init = [0.5]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
+        init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
+
+        m = perform_minuit_fit(chi2_like, init_pars, opts, cholesky_cov)
     if 'FC' in opts.fit_tool:
-        if opts.dataset == 'testing_data':
-            ls_pars = get_conditions(opts.file_number, opts.model_path)[0]
-        else:
-            # kb = 15.45, fc = 0.525, LY = 10100
-            ls_pars = [0.525, 0.525, 0.525]
-        init_pars = list(ls_pars) + [1]*len(list(opts.sources))
-        m = perform_fc_fit(chi2_like, init_pars, init_pars, opts)
+        ls_pars_init = [0.5]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
+        init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
+        ls_pars_true = [0.525]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.525, 0.525, 0.525], lower=True))
+        true_pars = list(ls_pars_true) + [1]*len(list(opts.sources))
+
+        m = perform_fc_fit(chi2_like, init_pars, true_pars, opts, cholesky_cov)
 
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--n-samples', type=int, default=500000, help='Number of samples to produce')
+    parser.add_argument('--n-samples', type=int, default=100000, help='Number of samples to produce')
     parser.add_argument('--sources', required=True,
                         choices=sources_all,
                         nargs='+', help='Which sources to use')

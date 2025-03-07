@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="neuromct",
-    version="0.0.2",
+    version="0.1.0",
     author='Arsenii Gavrikov, Andrea Serafini, Dmitry Dolzhikov',
     author_email="arsenii.gavrikov@pd.infn.it",
     packages=find_packages(),
@@ -27,6 +27,5 @@ setup(
         "torchvision==0.19.0",
         "tqdm==4.65.0",
         "uproot==5.3.3",
-        "entmax @ git+https://github.com/deep-spin/entmax.git@master#egg=entmax",
     ],
 )

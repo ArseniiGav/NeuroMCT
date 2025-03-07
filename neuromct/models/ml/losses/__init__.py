@@ -1,1 +1,1 @@
-from .regression_losses import *
+from .losses import CosineDistanceLoss, GeneralizedPoissonNLLLoss, GeneralizedKLDivLoss

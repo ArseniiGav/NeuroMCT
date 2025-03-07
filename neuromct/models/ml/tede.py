@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from .modules import Entmax
+from .modules import Softmax
 
 
 class TEDE(nn.Module):
@@ -14,9 +14,11 @@ class TEDE(nn.Module):
              num_encoder_layers: int,
              dim_feedforward: int,
              dropout: float,
-             entmax_alpha: float
+             temperature: float,
+             bin_size: float
         ):
         super(TEDE, self).__init__()
+        self.bin_size = bin_size
 
         self.param_emb_embedding = nn.Sequential(
             nn.Linear(1, d_model // 4),
@@ -49,7 +51,7 @@ class TEDE(nn.Module):
             nn.LayerNorm(output_dim // 2),
             nn.ReLU() if activation == 'relu' else nn.GELU(),
             nn.Linear(output_dim // 2, output_dim),
-            Entmax(alpha=entmax_alpha, dim=1)
+            Softmax(temperature=temperature, dim=1)
         )
 
     def forward(self, params, source_types):
@@ -58,5 +60,5 @@ class TEDE(nn.Module):
         source_type_emb = self.source_type_embedding(source_types) #  [B, 1] -> [B, 1, d_model]
         embs_cat = torch.cat((param_emb, source_type_emb), dim=1) # [B, param_dim+1, d_model]
         x = self.transformer_encoder(embs_cat) # [B, param_dim+1, d_model]
-        spectra_pdf = self.regression_head(x) # [B, output_dim]
+        spectra_pdf = self.regression_head(x) / self.bin_size # [B, output_dim]
         return spectra_pdf

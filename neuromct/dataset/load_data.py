@@ -1,37 +1,25 @@
 import torch
-import uproot
-import numpy as np
-from tqdm import tqdm
 
 from ..configs import data_configs
 
-def load_raw_data(path_to_raw_data, source, dataset_type, n_points, bins):
-    NPEs_counts_list = []
-    for i in tqdm(range(n_points)):
-        reco_file = uproot.open(f"{path_to_raw_data}/{source}/{dataset_type}/reco/reco-{i}.root")
-        NPEs = 1.07 * np.array(reco_file['TRec']['m_NPE'].array(), dtype=np.float64) / 1000.
-        NPEs_counts, _ = np.histogram(NPEs, bins=bins)
-        NPEs_counts = NPEs_counts.reshape(-1, 1)        
-        NPEs_counts_list.append(NPEs_counts)
-
-    NPEs_counts_array = np.concatenate(NPEs_counts_list, axis=1, dtype=np.float64)
-    return NPEs_counts_array.T
-
-def load_processed_data(dataset_type, path_to_processed_data, val2_rates=False):
+def load_processed_data(dataset_type, path_to_processed_data, approach_type, val2_rates=False):
+    fname = "spectra" if approach_type == "tede" else "npe"
+    base_path = f"{path_to_processed_data}/{approach_type}"
     if dataset_type in ["training", "val1", "val2_1", "val2_2", "val2_3"]:
-        spectra_path = f"{path_to_processed_data}/{dataset_type.split('_')[0]}/{dataset_type}_spectra.pt"
-        params_path = f"{path_to_processed_data}/{dataset_type.split('_')[0]}/{dataset_type}_params.pt"
-        source_types_path = f"{path_to_processed_data}/{dataset_type.split('_')[0]}/{dataset_type}_source_types.pt"
+        dataset_type_dir_name = dataset_type.split('_')[0]
+        spectra_path = f"{base_path}/{dataset_type_dir_name}/{dataset_type}_{fname}.pt"
+        params_path = f"{base_path}/{dataset_type_dir_name}/{dataset_type}_params.pt"
+        source_types_path = f"{base_path}/{dataset_type_dir_name}/{dataset_type}_source_types.pt"
     else:
         raise ValueError(
             """Invalid dataset_type! 
-               Choose between 'training', 'val1', 'val2_1', 'val2_2', and 'val2_3'.""")
+            Choose between 'training', 'val1', 'val2_1', 'val2_2', and 'val2_3'.""")
 
     spectra = torch.load(spectra_path, weights_only=True)
     params = torch.load(params_path, weights_only=True)
     source_types = torch.load(source_types_path, weights_only=True)
     data = (spectra, params, source_types)
-    if val2_rates:
+    if approach_type == 'tede' and val2_rates:
         if dataset_type in ["val2_1", "val2_2", "val2_3"]:
             data_rates = get_val2_data_rates(data)
         else:
