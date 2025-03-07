@@ -140,17 +140,17 @@ def perform_minuit_fit(chi2, par_init, opts):
     m.migrad(ncall=100000)
 
     # Scan near bf-value to ensure that we are in global minimum
-    for par in ('x0', 'x1', 'x2',):
-        bf = m.params[par].value
-        m.limits[par] = (bf-0.1, bf+0.1)
-    for par in m.parameters[3:]:
-        m.fixto(par, m.params[par].value)
-    m.scan(ncall=20)
+    # for par in ('x0', 'x1', 'x2',):
+    #     bf = m.params[par].value
+    #     m.limits[par] = (bf-0.1, bf+0.1)
+    # for par in m.parameters[3:]:
+    #     m.fixto(par, m.params[par].value)
+    # m.scan(ncall=20)
 
-    # Make all parameters free
-    for p_name in m.pos2var:
-        m.limits[p_name] = (None, None)
-        m.fixed[p_name] = False
+    # # Make all parameters free
+    # for p_name in m.pos2var:
+    #     m.limits[p_name] = (None, None)
+    #     m.fixed[p_name] = False
 
     # Make final fit
     m.migrad()
