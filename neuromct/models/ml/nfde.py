@@ -42,8 +42,7 @@ class Flow(nn.Module):
     def forward(self, x, params, source_types):
         x = x.squeeze(1)
         params_emb = self.param_net(params) # [B, param_dim] -> [B, n_units]
-        source_types = source_types.squeeze(1) # [B, 1] -> [B]
-        source_types_emb = self.source_type_embedding(source_types) # [B] -> [B, n_units]
+        source_types_emb = self.source_type_embedding(source_types).squeeze(1) # [B, 1] -> [B, n_units]
         input_emb_cat = torch.cat([params_emb, source_types_emb], dim=1) # [B, n_units * 2]
         flow_params = self.conditions_to_params_net(input_emb_cat) # [B, n_units * 2] -> [B, 3]
         if self.flow_type == 'planar':
@@ -77,8 +76,7 @@ class Flow(nn.Module):
         x0 = torch.rand(z.shape, device=z.device, requires_grad=True)
 
         params_emb = self.param_net(params) # [B, param_dim] -> [B, n_units]
-        source_types = source_types.squeeze(1) # [B, 1] -> [B]
-        source_types_emb = self.source_type_embedding(source_types) # [B] -> [B, n_units]
+        source_types_emb = self.source_type_embedding(source_types.squeeze(1)) # [B] -> [B, n_units]
         input_emb_cat = torch.cat([params_emb, source_types_emb], dim=1) # [B, n_units * 2]
         flow_params = self.conditions_to_params_net(input_emb_cat) # [B, n_units * 2] -> [B, 3]
         if self.flow_type == 'planar':
@@ -91,7 +89,7 @@ class Flow(nn.Module):
                 z0 = z0.squeeze(1)
 
                 m = x0 * self.w + self.b
-                p = self.u * (1 - torch.tanh(x0 * self.w + self.b)**2) * self.w
+                p = self.u * (1 - torch.tanh(m)**2) * self.w
                 f_prime_inverse = 1 - p / (1 + p)
                 x0 = x0 + (z - z0) * f_prime_inverse
 
@@ -201,15 +199,15 @@ class NFDE(nn.Module):
         base_log_prob, log_det_jacobian = self._log_prob_comp(x, params, source_types)
         return base_log_prob + log_det_jacobian
 
-    def generate_energies(self, n_energies, params, source_types):
+    def generate_energies(self, n_en_values, params, source_types):
         self.eval()
         with torch.no_grad():
             if self.base_type == 'uniform':
-                z = torch.rand(n_energies, 1).to(params.device) * (self.rb - self.lb) + self.lb
+                z = torch.rand(n_en_values, 1).to(params.device) * (self.rb - self.lb) + self.lb
             elif self.base_type == 'normal':
-                z = torch.randn(n_energies, 1).to(params.device)
+                z = torch.randn(n_en_values, 1).to(params.device)
             elif self.base_type == 'lognormal':
-                z = torch.exp(torch.randn(n_energies, 1).to(params.device))
+                z = torch.exp(torch.randn(n_en_values, 1).to(params.device))
             x = self.inverse(z, params, source_types)
         self.train()
         return x

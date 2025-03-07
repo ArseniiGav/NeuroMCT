@@ -70,6 +70,9 @@ def nfde_argparse():
                                 (i.e., used for the early stopping condition). Can be val_*_metric, 
                                 where * is either "cramer" or "wasserstein", or "ks". 
                                 Default=val_cramer_metric.''')
+    parser.add_argument("--n_en_values", type=int, default=100000,
+                         help='''The number of energy values for log_prob estimation 
+                                 during training of the NFDE model (default=100000)''')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:

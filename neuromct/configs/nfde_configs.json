@@ -4,17 +4,18 @@
     "n_units": 20,
     "flow_type": "planar",
     "base_type": "normal",
+    "loss_function": "cramer",
     "activation_function": "gelu",
-    "learning_rate": 0.0002602685913262217,
+    "learning_rate": 1e-4,
     "optimizer": "AdamW",
     "lr_scheduler": "ReduceLROnPlateau",
-    "batch_size": 256,
-    "weight_decay": 0.009495617703993944,
+    "batch_size": 32,
+    "weight_decay": 1e-4,
     "reduction_factor": 0.9,
     "beta1": 0.85,
     "beta2": 0.946,
     "accelerator": "gpu",
     "monitor_metric": "val_cramer_metric",
     "seed": 22,
-    "n_energies_to_gen": 100000
+    "n_en_values": 100000
 }

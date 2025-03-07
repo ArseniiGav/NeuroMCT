@@ -12,7 +12,9 @@ sources_names_to_vis = [
 sources_colors_to_vis = ['darkgreen', 'royalblue', 
                          'firebrick', 'indigo', 'peru']
 bin_size = 0.02
-bins = np.arange(0.4, 16.41, bin_size, dtype=np.float32)
+bins_llim, bins_rlim = 0.4, 16.4
+bins_limits = (bins_llim, bins_rlim)
+bins = np.arange(bins_llim, bins_rlim+0.01, bin_size, dtype=np.float32)
 n_bins = bins.shape[0] - 1
 
 data_configs = {
@@ -51,6 +53,7 @@ data_configs = {
 
     "bin_size": bin_size, # kNPE
     "kNPE_bins_edges": bins, # kNPE
+    "kNPE_bins_limits": bins_limits,
     "n_bins": n_bins,
     "params_dim": 3, # kB, fC, LY
     "n_conditions": 4 # kB, fC, LY, source_type

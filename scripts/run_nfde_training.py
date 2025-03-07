@@ -25,6 +25,7 @@ approach_type = 'nfde'
 base_path_to_models = data_configs['base_path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_nfde_training_results = data_configs['path_to_nfde_training_results']
+en_limits = 0.0, 20.0
 
 os.makedirs(f'{path_to_nfde_training_results}', exist_ok=True)
 os.makedirs(f'{path_to_nfde_training_results}/plots', exist_ok=True)
@@ -66,8 +67,8 @@ train_loader = DataLoader(
 
 val1_loader = DataLoader(
     val1_data, 
-    batch_size=val1_data.__len__(), 
-    shuffle=False, 
+    batch_size=args.batch_size,
+    shuffle=True, 
     pin_memory=True
 )
 
@@ -78,7 +79,6 @@ val2_loader = DataLoader(
     pin_memory=True
 )
 
-loss_function = "kl-div"
 wasserstein_distance = LpNormDistance(p=1) # Wasserstein distance
 cramer_distance = LpNormDistance(p=2) # Cramér-von Mises distance
 ks_distance = LpNormDistance(p=torch.inf) # Kolmogorov-Smirnov distance
@@ -138,7 +138,7 @@ nfde_model = NFDE(
 
 nfde_model_lightning_training = NFDELightningTraining(
     model=nfde_model,
-    loss_function=loss_function,
+    loss_function=args.loss_function,
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
@@ -146,11 +146,12 @@ nfde_model_lightning_training = NFDELightningTraining(
     lr=args.lr,
     weight_decay=args.weight_decay,
     monitor_metric=args.monitor_metric,
-    n_energies_to_gen=args.n_energies_to_gen
+    n_en_values=args.n_en_values,
+    en_limits=en_limits
 )
 
 trainer_nfde = Trainer(
-    max_epochs=2000,
+    max_epochs=100,
     accelerator=args.accelerator,
     devices="auto",
     precision="16-mixed",
@@ -176,7 +177,7 @@ trainer_nfde.fit(
 best_nfde_model = NFDELightningTraining.load_from_checkpoint(
     checkpoint_path=checkpoint_callback.best_model_path,
     model=nfde_model,
-    loss_function=loss_function,
+    loss_function=args.loss_function,
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
@@ -184,7 +185,8 @@ best_nfde_model = NFDELightningTraining.load_from_checkpoint(
     lr=args.lr,
     weight_decay=args.weight_decay,
     monitor_metric=args.monitor_metric,
-    n_energies_to_gen=args.n_energies_to_gen
+    n_en_values=args.n_en_values,
+    en_limits=en_limits
 )
 
 torch.save(
