@@ -66,6 +66,32 @@ class Flow(nn.Module):
             nn.Linear(n_units_combined // 2, 3),
         )
 
+    def _get_u_hat(self, 
+                   u: torch.Tensor, 
+                   w: torch.Tensor
+        ) -> torch.Tensor:
+        """
+        Adjusts u to ensure invertibility of the planar flow transformation.
+        Computes u_hat = u + ((m - u * w) * w) / ||w||^2,
+        where m = -1 + log(1 + exp(u * w)).
+
+        Parameters
+        ----------
+        u (torch.Tensor):
+            The current value of u.
+        w (torch.Tensor):
+            The current value of w.
+
+        Returns
+        -------
+        u_hat (torch.Tensor):
+            The adjusted version of u.
+        """
+        wu = u * w
+        m_wu = -1 + torch.log(1 + torch.exp(wu))
+        u_hat = u + (m_wu - wu) * w / torch.norm(w, p=2) ** 2
+        return u_hat
+
     def forward(self, 
                 x: torch.Tensor, 
                 params: torch.Tensor, 
@@ -108,30 +134,33 @@ class Flow(nn.Module):
         source_types_emb = source_types_emb.squeeze(0) # [1, n_units] -> [n_units]
         input_emb_cat = torch.cat([params_emb, source_types_emb], dim=0) # [n_units * 2]
         flow_params = self.conditions_to_params_net(input_emb_cat) # [n_units * 2] -> [3]
+        
         if self.flow_type == 'planar':
-            self.w = torch.tanh(flow_params[0])
-            self.u = torch.tanh(flow_params[1])
-            self.b = flow_params[2]
+            w = torch.tanh(flow_params[0])
+            u = torch.tanh(flow_params[1])
+            b = flow_params[2]
     
-            m = x * self.w + self.b
+            if u * w < -1: 
+                u = self._get_u_hat(u, w)
+
+            m = x * w + b
             h = torch.tanh(m)
-            z = x + self.u * h
+            z = x + u * h
             
-            mask = self.u * self.w < -1
-            if (self.u * self.w)[mask].shape[0] != 0:
-                self.u = self._get_u_hat(mask)
-            abs_det_jacobian = (1 + self.u * (1 - h**2) * self.w).abs()
+            abs_det_jacobian = (1 + u * (1 - h**2) * w).abs()
             log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
+
         elif self.flow_type == 'radial':
-            self.α = torch.log(torch.exp(flow_params[0]) + 1)
-            self.β = torch.exp(flow_params[1]) - 1
-            self.γ = flow_params[2]
+            α = torch.log(torch.exp(flow_params[0]) + 1)
+            β = torch.exp(flow_params[1]) - 1
+            γ = flow_params[2]
 
-            r = x - self.γ
-            z = x + self.α * self.β * r / (self.α + torch.abs(r))
+            r = x - γ
+            z = x + α * β * r / (α + torch.abs(r))
 
-            det_jacobian = 1 + (self.α**2 * self.β) / (self.α + torch.abs(r))**2
+            det_jacobian = 1 + (α**2 * β) / (α + torch.abs(r))**2
             log_det_jacobian = torch.log(1e-10 + det_jacobian)
+
         return z, log_det_jacobian
 
     def inverse(self, 
@@ -177,56 +206,37 @@ class Flow(nn.Module):
         source_types_emb = source_types_emb.squeeze(0) # [1, n_units] -> [n_units]
         input_emb_cat = torch.cat([params_emb, source_types_emb], dim=0) # [n_units * 2]
         flow_params = self.conditions_to_params_net(input_emb_cat) # [n_units * 2] -> [3]
+
         if self.flow_type == 'planar':
-            self.w = torch.tanh(flow_params[0])
-            self.u = torch.tanh(flow_params[1])
-            self.b = flow_params[2]
+            w = torch.tanh(flow_params[0])
+            u = torch.tanh(flow_params[1])
+            b = flow_params[2]
+
+            if u * w < -1: 
+                u = self._get_u_hat(u, w)
 
             for _ in range(max_iters): 
                 z0, _ = self.forward(x0, params, source_types)
 
-                m = x0 * self.w + self.b
-                p = self.u * (1 - torch.tanh(m)**2) * self.w
-                f_prime_inverse = 1 - p / (1 + p)
+                m = x0 * w + b
+                f_prime = u * (1 - torch.tanh(m)**2) * w
+                f_prime_inverse = 1 / (1 + f_prime)
                 x0 = x0 + (z - z0) * f_prime_inverse
 
         elif self.flow_type == 'radial':
-            self.α = torch.log(torch.exp(flow_params[0]) + 1)
-            self.β = torch.exp(flow_params[1]) - 1
-            self.γ = flow_params[2]
+            α = torch.log(torch.exp(flow_params[0]) + 1)
+            β = torch.exp(flow_params[1]) - 1
+            γ = flow_params[2]
 
             for _ in range(max_iters):
                 z0, _ = self.forward(x0, params, source_types)
 
-                r = x0 - self.γ          
-                f_prime = x0 + (self.α * self.β * r) / (self.α + torch.abs(r))
+                r = x0 - γ          
+                f_prime = 1 + (α**2 * β) / (α + torch.abs(r))**2
                 f_prime_inverse = 1 / f_prime
                 x0 = x0 + (z - z0) * f_prime_inverse
+
         return x0
-
-    def _get_u_hat(self, mask):
-        """
-        Adjusts the vector u to ensure invertibility of the planar flow transformation.
-        When the product u * w falls below a threshold (i.e., less than -1),
-        this helper method computes an adjusted version, u_hat.
-
-        Parameters
-        ----------
-        mask (torch.Tensor):
-            A boolean tensor indicating the indices where u * w is less than -1.
-
-        Returns
-        -------
-        u_hat (torch.Tensor):
-            The adjusted version of u (u_hat).
-        """
-        wu = (self.u * self.w)[mask]
-        m_wu = -1 + torch.log(1 + torch.exp(wu))
-        u_hat = self.u.clone()
-        u_hat[mask] = (
-            self.u[mask] + (m_wu - wu) * self.w[mask] / torch.norm(self.w[mask], p=2) ** 2
-        )
-        return u_hat
 
 
 class NFDE(nn.Module):
