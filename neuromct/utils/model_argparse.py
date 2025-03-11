@@ -53,8 +53,8 @@ def nfde_argparse():
                          help="The path to the JSON config file")
     parser.add_argument("--n_flows", type=int, default=25,
                          help='The number of flows (default=25).')
-    parser.add_argument("--batch_size", type=int, default=8196,
-                         help='The batch size (default=8196).')
+    parser.add_argument("--batch_size", type=int, default=32,
+                         help='The batch size (default=32).')
     parser.add_argument("--lr", type=float, default=5e-4,
                         help='The learning rate (default=5e-4)')
     parser.add_argument("--activation_function", type=str, default="relu",

@@ -14,7 +14,7 @@ sources_colors_to_vis = ['darkgreen', 'royalblue',
 bin_size = 0.02
 bins_llim, bins_rlim = 0.4, 16.4
 bins_limits = (bins_llim, bins_rlim)
-bins = np.arange(bins_llim, bins_rlim+0.01, bin_size, dtype=np.float32)
+bins = np.arange(bins_llim, bins_rlim+0.01, bin_size, dtype=np.float64)
 n_bins = bins.shape[0] - 1
 
 data_configs = {
@@ -33,18 +33,17 @@ data_configs = {
     "sources_colors_to_vis": sources_colors_to_vis,
 
     # params for plots configs
-    "plot_every_n_steps": 50,
     "n_params_values_to_vis": 4,
 
     "params_values_to_vis_training": torch.tensor(
-        [0.0500, 0.3500, 0.6500, 0.9500], dtype=torch.float32),
+        [0.0500, 0.3500, 0.6500, 0.9500], dtype=torch.float64),
     "base_value_to_vis_training": torch.tensor(
-        0.5000, dtype=torch.float32),
+        0.5000, dtype=torch.float64),
 
     "params_values_to_vis_val1": torch.tensor(
-        [0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float32),
+        [0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float64),
     "base_value_to_vis_val1": torch.tensor(
-        0.4750, dtype=torch.float32),
+        0.4750, dtype=torch.float64),
 
     "val2_n_datasets": 1000,
     "kB_val2_values": (7.35, 14.55, 23.55),

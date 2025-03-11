@@ -1,7 +1,6 @@
 from ..plot import ModelResultsVisualizer
 
-def res_visualizator_setup(configs):
-    plot_every_n_steps = configs['plot_every_n_steps']
+def res_visualizator_setup(configs, plot_every_n_train_epochs):
     path_to_processed_data = configs['path_to_processed_data']
     base_path_to_models = configs['base_path_to_models']
 
@@ -23,7 +22,7 @@ def res_visualizator_setup(configs):
     LY_val2_values = configs['LY_val2_values']
 
     model_results_visualizer = ModelResultsVisualizer(
-        plot_every_n_steps=plot_every_n_steps,
+        plot_every_n_train_epochs=plot_every_n_train_epochs,
         path_to_scaler=base_path_to_models,
         path_to_processed_data=path_to_processed_data,
         n_sources=n_sources,
@@ -40,5 +39,4 @@ def res_visualizator_setup(configs):
         fC_val2_values=fC_val2_values,
         LY_val2_values=LY_val2_values
     )
-
     return model_results_visualizer
