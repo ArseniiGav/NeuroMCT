@@ -158,9 +158,8 @@ class Flow(nn.Module):
             r = x - γ
             z = x + α * β * r / (α + torch.abs(r))
 
-            det_jacobian = 1 + (α**2 * β) / (α + torch.abs(r))**2
-            log_det_jacobian = torch.log(1e-10 + det_jacobian)
-
+            abs_det_jacobian = (1 + (α**2 * β) / (α + torch.abs(r))**2).abs()
+            log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
         return z, log_det_jacobian
 
     def inverse(self, 
@@ -235,7 +234,6 @@ class Flow(nn.Module):
                 f_prime = 1 + (α**2 * β) / (α + torch.abs(r))**2
                 f_prime_inverse = 1 / f_prime
                 x0 = x0 + (z - z0) * f_prime_inverse
-
         return x0
 
 
@@ -256,7 +254,7 @@ class NFDE(nn.Module):
             n_units, activation, flow_type
         )
         self.base_type = base_type
-        self.pi = torch.tensor(math.pi, dtype=torch.float32)
+        self.pi = torch.tensor(math.pi, dtype=torch.float64)
         if self.base_type == 'uniform':
             self.lb = 0.0
             self.rb = 20.0
@@ -285,7 +283,7 @@ class NFDE(nn.Module):
             base_log_prob = torch.where(
                 within_bounds,
                 torch.full_like(z, -torch.log(self.rb - self.lb)),
-                torch.full_like(z, self.lb)
+                torch.full_like(z, torch.tensor(-1000.))
             )
         elif self.base_type == 'normal':
             base_log_prob = -0.5 * (z ** 2 + torch.log(2 * self.pi))

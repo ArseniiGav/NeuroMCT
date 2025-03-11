@@ -22,6 +22,7 @@ from neuromct.utils import (
 )
 
 approach_type = 'nfde'
+plot_every_n_train_epochs = 1
 base_path_to_models = data_configs['base_path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_nfde_training_results = data_configs['path_to_nfde_training_results']
@@ -31,7 +32,8 @@ os.makedirs(f'{path_to_nfde_training_results}', exist_ok=True)
 os.makedirs(f'{path_to_nfde_training_results}/plots', exist_ok=True)
 os.makedirs(f'{path_to_nfde_training_results}/predictions', exist_ok=True)
 
-# model_res_visualizator = res_visualizator_setup(data_configs)
+model_res_visualizator = res_visualizator_setup(
+    data_configs, plot_every_n_train_epochs)
 
 args = nfde_argparse()
 seed_everything(args.seed, workers=True)
@@ -114,12 +116,13 @@ checkpoint_callback = ModelCheckpoint(
     save_top_k=1, monitor=monitor_metric, mode="min")
 early_stopping_callback = EarlyStopping(
     monitor=monitor_metric, mode="min", patience=200)
-# res_visualizer_callback = ModelResultsVisualizerCallback(
-#     res_visualizer=model_res_visualizator,
-#     base_path_to_savings=path_to_nfde_training_results,
-#     plots_dir_name='plots',
-#     predictions_dir_name='predictions'
-# )
+res_visualizer_callback = ModelResultsVisualizerCallback(
+    res_visualizer=model_res_visualizator,
+    approach_type=approach_type,
+    base_path_to_savings=path_to_nfde_training_results,
+    plots_dir_name='plots',
+    predictions_dir_name='predictions'
+)
 
 logger = CSVLogger(
     save_dir=path_to_nfde_training_results, 
@@ -154,11 +157,11 @@ trainer_nfde = Trainer(
     max_epochs=100,
     accelerator=args.accelerator,
     devices="auto",
-    precision="16-mixed",
+    precision="64",
     callbacks=[
         checkpoint_callback,
         early_stopping_callback,
-        # res_visualizer_callback,
+        res_visualizer_callback,
         LearningRateMonitor(),
     ],
     logger=logger,

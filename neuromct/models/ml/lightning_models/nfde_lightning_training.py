@@ -35,7 +35,7 @@ class NFDELightningTraining(LightningModule):
         
         lb, rb = en_limits
         self.x_values = torch.linspace(
-            lb, rb, n_en_values, dtype=torch.float32)
+            lb, rb, n_en_values, dtype=torch.float64)
 
         self.val1_metrics_to_plot = {key: [] for key in self.val_metric_names}
         self.val2_metrics_to_plot = {key: [] for key in self.val_metric_names}
@@ -47,7 +47,7 @@ class NFDELightningTraining(LightningModule):
         elif self.loss_function == "cramer":
             self.cramer_loss = LpNormDistance(p=2)
     
-    def _compute_and_log_val_metrics(self, x, prob_x_batch, real_energies_batch, data_type):
+    def _compute_and_log_val_metrics(self, x, prob_x_batch, real_energies_batch):
         metrics = dict()
         for name, function in self.val_metric_functions.items():
             metric_list = []
@@ -110,7 +110,7 @@ class NFDELightningTraining(LightningModule):
 
         losses = []
         for i in range(batch_size):
-            no_nan_inds = ~torch.isnan(real_energies[i])
+            no_nan_inds = ~real_energies[i].isnan()
             real_energies_no_nan = real_energies[i][no_nan_inds]
             if self.loss_function == 'kl-div':
                 base_log_prob, log_det_jacobian = self.model._log_prob_comp(
@@ -138,10 +138,10 @@ class NFDELightningTraining(LightningModule):
                         None
                     )
             losses.append(loss)
-        mean_loss = torch.mean(torch.tensor(losses))
+        mean_loss = torch.mean(torch.stack(losses))
         self.log(f"training_loss", mean_loss, prog_bar=True, on_step=True, on_epoch=True)
         self.train_loss_to_plot.append(mean_loss.item())
-        return loss
+        return mean_loss
 
     def on_validation_epoch_start(self):
         self.val1_metrics_within_val_epoch = {
@@ -164,7 +164,7 @@ class NFDELightningTraining(LightningModule):
         prob_x_batch = torch.vstack(prob_x_batch)
 
         metrics_values = self._compute_and_log_val_metrics(
-            x, prob_x_batch, real_energies, dataset_type)
+            x, prob_x_batch, real_energies)
         if dataset_type == 'val1':
             for name, value in metrics_values.items():
                 self.val1_metrics_within_val_epoch[name].append(value)
