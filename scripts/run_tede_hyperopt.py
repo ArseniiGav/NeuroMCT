@@ -44,6 +44,7 @@ parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
 args = parser.parse_args()
 
 approach_type = 'tede'
+plot_every_n_train_epochs = 50
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_tede_hopt_results = data_configs['path_to_tede_hopt_results']
 
@@ -60,10 +61,11 @@ for run_index in range(args.n_trials):
 
 kNPE_bins_edges = data_configs['kNPE_bins_edges']
 kNPE_bins_centers = (kNPE_bins_edges[:-1] + kNPE_bins_edges[1:]) / 2
-kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float32)
+kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float64)
 bin_size = data_configs['bin_size']
 
-model_res_visualizator = res_visualizator_setup(data_configs)
+model_res_visualizator = res_visualizator_setup(
+    data_configs, plot_every_n_train_epochs)
 
 seed_everything(args.seed, workers=True)
 
@@ -237,7 +239,7 @@ def objective(trial):
         max_epochs=2000,
         accelerator=args.accelerator,
         devices="auto",
-        precision="16-mixed",
+        precision="64",
         callbacks=[
             checkpoint_callback,
             early_stopping_callback,
