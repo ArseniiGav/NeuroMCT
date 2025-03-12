@@ -515,7 +515,7 @@ class ModelResultsVisualizer:
             title += r"$d^{V}_{2} = \frac{1}{2} \left(d^{V_1}_{2} + d^{V_2}_{2}\right)$"
             title += f' = {val_metric_value:.4f}'
 
-            ylabel = "Cramér-von Mises distance: " + r"$d^{V}_{1}$"
+            ylabel = "Cramér-von Mises distance: " + r"$d^{V}_{2}$"
         elif val_metric_name == "ks":
             title = r"$d^{V_1}_{\infty}$ " + f"= {val1_metric_value:.4f}; "
             title += r"$d^{V_2}_{\infty}$ " + f"{val2_metric_value:.4f}; "
@@ -553,7 +553,7 @@ class ModelResultsVisualizer:
         ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 2e-1)
+        ax.set_ylim(0.75e-3, 1.5e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=15)
 
@@ -580,12 +580,12 @@ class ModelResultsVisualizer:
         for val_metric_name in val_metric_names:
             if val_metric_name == "wasserstein":
                 color = "indigo"
-                title += r"$d^{V}_{2}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
-                label = "Wasserstein distance: " + r"$d_2^{V}$"
+                title += r"$d^{V}_{1}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Wasserstein distance: " + r"$d_1^{V}$"
             elif val_metric_name == "cramer":
                 color = "#3971ac"
-                title += r"$d^{V}_{1}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
-                label = "Cramér-von Mises distance: " + r"$d_1^{V}$"
+                title += r"$d^{V}_{2}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Cramér-von Mises distance: " + r"$d_2^{V}$"
             elif val_metric_name == "ks":
                 color = "lightslategrey"
                 title += r"$d^{V}_{\infty}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
@@ -604,7 +604,7 @@ class ModelResultsVisualizer:
         ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 2e-1)
+        ax.set_ylim(0.75e-3, 1.5e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=16)
 
