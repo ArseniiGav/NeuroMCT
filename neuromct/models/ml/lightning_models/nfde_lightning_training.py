@@ -17,7 +17,8 @@ class NFDELightningTraining(LightningModule):
             lr: float,
             weight_decay: float,
             monitor_metric: str,
-            n_energies_to_gen: int
+            n_en_values: int,
+            en_limits: tuple[float, float]
         ):
         super(NFDELightningTraining, self).__init__()
 
@@ -31,7 +32,10 @@ class NFDELightningTraining(LightningModule):
         self.weight_decay = weight_decay
         self.monitor_metric = monitor_metric
         self.val_metric_names = list(val_metric_functions.keys())
-        self.n_energies_to_gen = n_energies_to_gen
+        
+        lb, rb = en_limits
+        self.x_values = torch.linspace(
+            lb, rb, n_en_values, dtype=torch.float64)
 
         self.val1_metrics_to_plot = {key: [] for key in self.val_metric_names}
         self.val2_metrics_to_plot = {key: [] for key in self.val_metric_names}
@@ -42,13 +46,23 @@ class NFDELightningTraining(LightningModule):
             self.wasserstein_loss = LpNormDistance(p=1)
         elif self.loss_function == "cramer":
             self.cramer_loss = LpNormDistance(p=2)
-
-    def _compute_and_log_val_metrics(self, spectra_predict, spectra_true, data_type):
+    
+    def _compute_and_log_val_metrics(self, x, prob_x_batch, real_energies_batch):
         metrics = dict()
         for name, function in self.val_metric_functions.items():
-            metric = function(spectra_predict, spectra_true)
-            self.log(f"{data_type}_{name}_metric", metric, prog_bar=True, on_epoch=True)
-            metrics[name] = metric.item()
+            metric_list = []
+            for i in range(real_energies_batch.shape[0]):
+                no_nan_inds = ~torch.isnan(real_energies_batch[i])
+                real_energies_no_nan = real_energies_batch[i][no_nan_inds]
+                metric = function(
+                    x.unsqueeze(0), 
+                    real_energies_no_nan.unsqueeze(0), 
+                    prob_x_batch[i].unsqueeze(0), 
+                    None
+                )
+                metric_list.append(metric)
+            metric_mean = torch.mean(torch.stack(metric_list))
+            metrics[name] = metric_mean.item()
         return metrics
 
     def configure_optimizers(self):
@@ -57,7 +71,7 @@ class NFDELightningTraining(LightningModule):
                 self.model.parameters(), 
                 lr=self.lr, 
                 betas=(
-                    self.optimizer_hparams['beta1'], 
+                    self.optimizer_hparams['beta1'],
                     self.optimizer_hparams['beta2']
                 ), 
                 weight_decay=self.weight_decay
@@ -86,61 +100,100 @@ class NFDELightningTraining(LightningModule):
                     eta_min=1e-6, verbose=False)
             return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
 
-    def forward(self, params, source_types):
-        return self.model(params, source_types)
+    def forward(self, x, params, source_types):
+        return self.model(x, params, source_types)
 
     def training_step(self, batch):
         real_energies, params, source_types = batch
-        if self.loss_function == 'kl-div':
-            base_log_prob, log_det_jacobian = self.model._log_prob_comp(
-                real_energies, params, source_types)
-            base_log_prob_loss = -base_log_prob.mean()
-            log_det_jacobian_loss = -log_det_jacobian.mean()
-            loss = base_log_prob_loss + log_det_jacobian_loss
-        else:
-            if self.model.base_type == 'uniform':
-                z = torch.rand(params.shape[0], 1).to(self.device) * 20
-            elif self.model.base_type == 'normal':
-                z = torch.randn(params.shape[0], 1).to(self.device)
-            elif self.model.base_type == 'lognormal':
-                z = torch.exp(torch.randn(params.shape[0], 1).to(self.device))
+        batch_size = real_energies.shape[0]
+        x = self.x_values.to(device=real_energies.device)
 
-            if self.loss_function == 'wasserstein':
-                x = self.inverse(z, params, source_types)
-                loss = self.wasserstein_loss(real_energies, x)
-            elif self.loss_function == 'cramer':
-                x = self.inverse(z, params, source_types)
-                loss = self.cramer_loss(real_energies, x)
+        losses = []
+        for i in range(batch_size):
+            no_nan_inds = ~real_energies[i].isnan()
+            real_energies_no_nan = real_energies[i][no_nan_inds]
+            if self.loss_function == 'kl-div':
+                base_log_prob, log_det_jacobian = self.model._log_prob_comp(
+                    real_energies_no_nan, params[i], source_types[i]
+                )
+                base_log_prob_loss = -base_log_prob.mean()
+                log_det_jacobian_loss = -log_det_jacobian.mean()
+                loss = base_log_prob_loss + log_det_jacobian_loss
+            else:
+                prob_x = torch.exp(
+                    self.model.log_prob(x, params[i], source_types[i])
+                )
+                if self.loss_function == 'wasserstein':
+                    loss = self.wasserstein_loss(
+                        x.unsqueeze(0), 
+                        real_energies_no_nan.unsqueeze(0), 
+                        prob_x.unsqueeze(0), 
+                        None
+                    )
+                elif self.loss_function == 'cramer':
+                    loss = self.cramer_loss(
+                        x.unsqueeze(0), 
+                        real_energies_no_nan.unsqueeze(0), 
+                        prob_x.unsqueeze(0), 
+                        None
+                    )
+            losses.append(loss)
+        mean_loss = torch.mean(torch.stack(losses))
+        self.log(f"training_loss", mean_loss, prog_bar=True, on_step=True, on_epoch=True)
+        self.train_loss_to_plot.append(mean_loss.item())
+        return mean_loss
 
-        self.log(f"training_loss", loss, prog_bar=True, on_step=True, on_epoch=True)
-        self.train_loss_to_plot.append(loss.item())
-        return loss
+    def on_validation_epoch_start(self):
+        self.val1_metrics_within_val_epoch = {
+            key: [] for key in self.val_metric_names}
+        self.val2_metrics_within_val_epoch = {
+            key: [] for key in self.val_metric_names}
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        dataset_type = "val1" if dataloader_idx == 0 else "val2"
         real_energies, params, source_types = batch
+        batch_size = real_energies.shape[0]
+        x = self.x_values.to(device=real_energies.device)
 
-        gen_energies = []
-        for i in range(real_energies.shape[0]):
-            gen_energies_per_condition = self.model.generate_energies(
-                self.n_energies_to_gen, params[i, :], source_types[i, :])
-            gen_energies.append(gen_energies_per_condition)
-        gen_energies = torch.cat(gen_energies, dim=0, dtype=torch.float32)
+        prob_x_batch = []
+        for i in range(batch_size):
+            prob_x = torch.exp(
+                self.model.log_prob(x, params[i], source_types[i])
+            )
+            prob_x_batch.append(prob_x)
+        prob_x_batch = torch.vstack(prob_x_batch)
 
-        if dataloader_idx == 0:
-            self.val1_metrics_values = self._compute_and_log_val_metrics(
-                gen_energies, real_energies, "val1")
-            for name, value in self.val1_metrics_values.items():
-                self.val1_metrics_to_plot[name].append(value)
-        elif dataloader_idx == 1:
-            self.val2_metrics_values = self._compute_and_log_val_metrics(
-                gen_energies, real_energies, "val2")
-            for name, value in self.val2_metrics_values.items():
-                self.val2_metrics_to_plot[name].append(value)
+        metrics_values = self._compute_and_log_val_metrics(
+            x, prob_x_batch, real_energies)
+        if dataset_type == 'val1':
+            for name, value in metrics_values.items():
+                self.val1_metrics_within_val_epoch[name].append(value)
+        elif dataset_type == 'val2':
+            for name, value in metrics_values.items():
+                self.val2_metrics_within_val_epoch[name].append(value)
 
     def on_validation_epoch_end(self):
+        self.val1_metrics_values = dict()
+        self.val2_metrics_values = dict()
         self.val_metrics_values = dict()
+
         for name in self.val_metric_names:
-            self.val_metrics_values[name] = (
-                self.val1_metrics_values[name] + self.val2_metrics_values[name]) / 2
-            self.log(f"val_{name}_metric", self.val_metrics_values[name], prog_bar=True)
-            self.val_metrics_to_plot[name].append(self.val_metrics_values[name])
+            val1_metrics_value = torch.mean(
+                torch.tensor(self.val1_metrics_within_val_epoch[name])
+            ).item()
+            val2_metrics_value = torch.mean(
+                torch.tensor(self.val2_metrics_within_val_epoch[name])
+            ).item()
+            val_metrics_value = (val1_metrics_value + val2_metrics_value) / 2
+
+            self.val1_metrics_values[name] = val1_metrics_value 
+            self.val2_metrics_values[name] = val2_metrics_value
+            self.val_metrics_values[name] = val_metrics_value
+
+            self.val1_metrics_to_plot[name].append(val1_metrics_value)
+            self.val2_metrics_to_plot[name].append(val2_metrics_value)
+            self.val_metrics_to_plot[name].append(val_metrics_value)
+
+            self.log(f"val1_{name}_metric", val1_metrics_value, prog_bar=True)
+            self.log(f"val2_{name}_metric", val2_metrics_value, prog_bar=True)
+            self.log(f"val_{name}_metric", val_metrics_value, prog_bar=True)

@@ -14,7 +14,7 @@ matplotlib_setup(tick_labelsize=14, axes_labelsize=14, legend_fontsize=9)
 class ModelResultsVisualizer:
     def __init__(
             self,
-            plot_every_n_steps: int,
+            plot_every_n_train_epochs: int,
             path_to_scaler: str, 
             path_to_processed_data: str,
             n_sources: int,
@@ -31,7 +31,7 @@ class ModelResultsVisualizer:
             fC_val2_values: list,
             LY_val2_values: list
         ):
-        self.plot_every_n_steps = plot_every_n_steps
+        self.plot_every_n_train_epochs = plot_every_n_train_epochs
         self.path_to_processed_data = path_to_processed_data
         self.n_sources = n_sources
         self.sources_names_to_vis = sources_names_to_vis
@@ -44,11 +44,11 @@ class ModelResultsVisualizer:
         self.scaler = load_minimax_scaler(path_to_scaler)
 
         self.n_params_values_to_vis = n_params_values_to_vis
-        training_data = load_processed_data("training", path_to_processed_data)
+        training_data = load_processed_data("training", path_to_processed_data, "tede")
         self.training_data_to_vis, self.training_params_to_vis_transformed = self._get_data_to_vis(
             training_data, params_values_to_vis_training, base_value_to_vis_training)
 
-        val1_data = load_processed_data("val1", path_to_processed_data)
+        val1_data = load_processed_data("val1", path_to_processed_data, "tede")
         self.val1_data_to_vis, self.val1_params_to_vis_transformed = self._get_data_to_vis(
             val1_data, params_values_to_vis_val1, base_value_to_vis_val1)
 
@@ -58,20 +58,20 @@ class ModelResultsVisualizer:
 
         self.val2_values = np.array(
             [self.kB_val2_values, self.fC_val2_values, self.LY_val2_values], 
-            dtype=np.float32).T
+            dtype=np.float64).T
         self.val2_params_to_vis = np.repeat(
             self.val2_values, self.n_sources, axis=0)
         self.val2_params_to_vis = torch.tensor(
             self.scaler.transform(self.val2_params_to_vis), 
-            dtype=torch.float32)
+            dtype=torch.float64)
         self.val2_source_types_to_vis = torch.arange(
-            self.n_sources, dtype=torch.int32
+            self.n_sources, dtype=torch.int64
         ).unsqueeze(1).repeat(self.params_dim, 1)
 
         val2_data = []
         for i in range(3):
             val2_i_data = load_processed_data(
-                f"val2_{i+1}", path_to_processed_data, val2_rates=True)
+                f"val2_{i+1}", path_to_processed_data, "tede", val2_rates=True)
             val2_i_data_spectra = val2_i_data[0]
             val2_i_data_spectra = val2_i_data_spectra / (val2_i_data_spectra.sum(1)[:, None] * self.bin_size)
             val2_data.append(val2_i_data_spectra)
@@ -152,10 +152,13 @@ class ModelResultsVisualizer:
                 suptitle += f"= {val_metrics[name]:.4f}"
         return suptitle
 
-    def _get_suptitle_training(self, current_epoch, global_step, train_loss):
+    def _get_suptitle_training(self, current_epoch, global_step, train_loss, approach_type):
         suptitle = f"Training dataset. Epoch: {current_epoch}, "
         suptitle += f"Iteration: {global_step}, "
-        suptitle += r"$L^{T}_{\rm KL}$ "
+        if approach_type == 'tede':
+            suptitle += r"$L^{T}_{\rm KL}$ "
+        elif approach_type == 'nfde':
+            suptitle += r"$L^{T}_{\rm NLL}$ "
         suptitle += f"= {train_loss:.4f}"
         return suptitle
 
@@ -169,6 +172,7 @@ class ModelResultsVisualizer:
             metric_value: float,
             dataset_type: str,
             path_to_save: str,
+            approach_type: str,
             **kwargs,
         ) -> None:
         fig, ax = plt.subplots(self.params_dim, self.n_params_values_to_vis,
@@ -190,19 +194,32 @@ class ModelResultsVisualizer:
                     color=self.sources_colors_to_vis[k],
                     alpha=0.6
                 )
-
-                ########### plot predicted ###########
-                ax[j].stairs(
-                    spectra_predicted_to_vis[m][i], 
-                    self.kNPE_bins_edges,
-                    color=self.sources_colors_to_vis[k],
-                    linestyle='--',
-                    alpha=1.0
-                )
                 
+                ########### plot predicted ###########
+                if approach_type == "tede":
+                    ax[j].stairs(
+                        spectra_predicted_to_vis[m][i], 
+                        self.kNPE_bins_edges,
+                        color=self.sources_colors_to_vis[k],
+                        linestyle='--',
+                        alpha=1.0
+                    )
+                elif approach_type == "nfde":
+                    n_x_values = spectra_predicted_to_vis[m][i].shape[0]
+                    lb, rb = self.kNPE_bins_edges[0], self.kNPE_bins_edges[-1]
+                    x_values = torch.linspace(lb, rb, n_x_values, dtype=torch.float64)
+                    ax[j].plot(
+                        x_values, 
+                        spectra_predicted_to_vis[m][i], 
+                        color=self.sources_colors_to_vis[k],
+                        linestyle='--', 
+                        alpha=1.0
+                    )
+
                 if k == 4:
+                    mlabel = "TEDE" if approach_type == "tede" else "NFDE"
                     ax[j].plot([0], [0], color='black', linewidth=1.5, label="JUNOSW")
-                    ax[j].plot([0], [0], color='black', linestyle='--', linewidth=1.5, label="TEDE")
+                    ax[j].plot([0], [0], color='black', linestyle='--', linewidth=1.5, label=mlabel)
                     
                     handles, labels = ax[j].get_legend_handles_labels()                
                     legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=10, loc="upper right",)
@@ -221,7 +238,8 @@ class ModelResultsVisualizer:
                     ax[j].set_ylabel("Prob. density: " + r"$f(N_{p.e.} | k_{B}, f_{C}, Y)$")
         
         if dataset_type == 'training':
-            suptitle = self._get_suptitle_training(current_epoch, global_step, metric_value)
+            suptitle = self._get_suptitle_training(
+                current_epoch, global_step, metric_value, approach_type)
             fig.suptitle(suptitle, x=0.3, y=0.99, fontsize=20)
             fig.tight_layout()
             fig.savefig(f'{path_to_save}/epoch_{current_epoch}_it_{global_step}_tr.png')
@@ -244,7 +262,8 @@ class ModelResultsVisualizer:
             global_step: int,
             metric_value: float,
             metric_names: list,
-            path_to_save: str
+            path_to_save: str,
+            approach_type: str,
         ) -> None:
         fig, ax = plt.subplots(1, self.params_dim, 
                                figsize=(self.params_dim*6, self.params_dim*2))
@@ -258,7 +277,8 @@ class ModelResultsVisualizer:
 
             ########### plot true ###########
             ax[j].stairs(
-                rates_true_to_vis[j][k], self.kNPE_bins_edges,
+                rates_true_to_vis[j][k], 
+                self.kNPE_bins_edges,
                 label=self.sources_names_to_vis[k],
                 color=self.sources_colors_to_vis[k],
                 linewidth=1.25,
@@ -266,17 +286,32 @@ class ModelResultsVisualizer:
             )
 
             ########### plot predicted ###########
-            ax[j].stairs(
-                rates_predicted_to_vis[i], self.kNPE_bins_edges,
-                color=self.sources_colors_to_vis[k],
-                linestyle='--',
-                linewidth=1.25,
-                alpha=1.0
-            )
-            
+            if approach_type == "tede":
+                ax[j].stairs(
+                    rates_predicted_to_vis[i], 
+                    self.kNPE_bins_edges,
+                    color=self.sources_colors_to_vis[k],
+                    linestyle='--',
+                    linewidth=1.25,
+                    alpha=1.0
+                )
+            elif approach_type == "nfde":
+                n_x_values = rates_predicted_to_vis[i].shape[0]
+                lb, rb = self.kNPE_bins_edges[0], self.kNPE_bins_edges[-1]
+                x_values = torch.linspace(lb, rb, n_x_values, dtype=torch.float64)
+                ax[j].plot(
+                    x_values, 
+                    rates_predicted_to_vis[i], 
+                    color=self.sources_colors_to_vis[k],
+                    linestyle='--',
+                    linewidth=1.25,
+                    alpha=1.0
+                )
+
             if k == 4:
+                mlabel = "TEDE" if approach_type == "tede" else "NFDE"
                 ax[j].plot([0], [0], color='black', linewidth=2, label="JUNOSW")
-                ax[j].plot([0], [0], color='black', linestyle='--', linewidth=2, label="TEDE")
+                ax[j].plot([0], [0], color='black', linestyle='--', linewidth=2, label=mlabel)
                 
                 handles, labels = ax[j].get_legend_handles_labels()                
                 legend1 = ax[j].legend(handles[:5], labels[:5], frameon=1, ncol=1, fontsize=14, loc="upper right",)
@@ -309,7 +344,7 @@ class ModelResultsVisualizer:
             global_step: int,
             metric_value: float,
             metric_names: list,
-            path_to_save: str
+            path_to_save: str,
         ) -> None:
         fig, axes = plt.subplots(2, self.params_dim, 
                                  figsize=(self.params_dim * 6, self.params_dim * 2.25),
@@ -406,15 +441,30 @@ class ModelResultsVisualizer:
             train_loss_value: float,
             global_step: int,
             current_epoch: int,
-            path_to_save: str
+            path_to_save: str,
+            approach_type: str
         ) -> None:
-        title = "The loss averaged over the last batch: " + r'$L^{B}_{\rm KL} = $' + f"{train_loss_value:.4f}"
-        label = (r"$L_{\rm KL} = "
-                 r"\frac{1}{|B| \cdot N_b} \sum_{i=1}^{|B|} \ \sum_{j=1}^{N_b} "
-                 r"f\left(\mathbf{X}_{i,j}^{\rm{JUNOSW}}\right) \cdot "
-                 r"\log\left( "
-                 r"\frac{f\left(\mathbf{X}_{i,j}^{\rm{JUNOSW}}\right)}{f\left(\mathbf{X}_{i,j}^{\rm{TEDE}}\right)} "
-                 r"\right)$")
+        if approach_type == "tede":
+            label = (r"$L_{\rm KL} = "
+                    r"\frac{1}{|B| \cdot N_b} \sum_{i=1}^{|B|} \ \sum_{j=1}^{N_b} "
+                    r"f\left(\mathbf{X}_{i,j}^{\rm{JUNOSW}}\right) \cdot "
+                    r"\log\left( "
+                    r"\frac{f\left(\mathbf{X}_{i,j}^{\rm{JUNOSW}}\right)}{f\left(\mathbf{X}_{i,j}^{\rm{TEDE}}\right)} "
+                    r"\right)$")
+            ytitle = "KL-divergence loss: " + r"$L_{\rm KL}$"
+            yscale = "log"
+            ylims = 1e-1, 1e2
+            title = ("The loss averaged over the last batch: " + 
+                     r'$L^{B}_{\rm KL} = $' + f"{train_loss_value:.4f}")
+        elif approach_type == "nfde":
+            label = (r"$L_{\rm NLL} = "
+                    r"-\frac{1}{|B|} \sum_{i=1}^{|B|} \ \left( \frac{1}{N_i} \sum_{j=1}^{N_i}"
+                    r"\log(p_{\theta} \left(\mathbf{X}_{i,j}\right) \right)$")
+            ytitle = "Model NLL-divergence loss: " + r"$L_{\rm NLL}$"
+            yscale = "symlog"
+            ylims = -1e1, 1e2
+            title = ("The loss averaged over the last batch: " + 
+                     r'$L^{B}_{\rm NLL} = $' + f"{train_loss_value:.4f}")
 
         x_to_plot = np.arange(1, global_step+1)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
@@ -426,10 +476,10 @@ class ModelResultsVisualizer:
             alpha=0.7,
             linewidth=1.25
         )
-        ax.set_ylabel("KL-divergence loss: " + r"$L_{\rm KL}$", fontsize=16, color='black')
+        ax.set_ylabel(ytitle, fontsize=16, color='black')
         ax.set_xlabel('Iteration', fontsize=16)
-        ax.set_yscale("log")
-        ax.set_ylim(1e-1, 1e2)
+        ax.set_yscale(yscale)
+        ax.set_ylim(*ylims)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=16)
 
