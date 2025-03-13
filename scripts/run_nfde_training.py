@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.optim as optim
+import torch.multiprocessing as mp
 from torch.utils.data import DataLoader, ConcatDataset
 
 from lightning import Trainer
@@ -20,6 +21,10 @@ from neuromct.utils import (
     create_dataset,
     res_visualizator_setup
 )
+
+mp.set_start_method('spawn', force=True)
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
 
 approach_type = 'nfde'
 plot_every_n_train_epochs = 1
@@ -63,14 +68,13 @@ train_loader = DataLoader(
     train_data, 
     batch_size=args.batch_size,
     shuffle=True, 
-    num_workers=20, 
     pin_memory=True
 )
 
 val1_loader = DataLoader(
     val1_data, 
     batch_size=args.batch_size,
-    shuffle=True, 
+    shuffle=False, 
     pin_memory=True
 )
 
@@ -115,7 +119,7 @@ monitor_metric = "val_cramer_metric"
 checkpoint_callback = ModelCheckpoint(
     save_top_k=1, monitor=monitor_metric, mode="min")
 early_stopping_callback = EarlyStopping(
-    monitor=monitor_metric, mode="min", patience=200)
+    monitor=monitor_metric, mode="min", patience=10)
 res_visualizer_callback = ModelResultsVisualizerCallback(
     res_visualizer=model_res_visualizator,
     approach_type=approach_type,
@@ -156,7 +160,8 @@ nfde_model_lightning_training = NFDELightningTraining(
 trainer_nfde = Trainer(
     max_epochs=100,
     accelerator=args.accelerator,
-    devices="auto",
+    strategy="ddp",
+    devices=25,
     precision="64",
     callbacks=[
         checkpoint_callback,

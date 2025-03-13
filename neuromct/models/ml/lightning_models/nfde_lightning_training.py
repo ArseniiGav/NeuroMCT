@@ -89,15 +89,15 @@ class NFDELightningTraining(LightningModule):
         else:
             if self.lr_scheduler == optim.lr_scheduler.ExponentialLR:
                 scheduler = self.lr_scheduler(
-                    opt, gamma=self.optimizer_hparams['gamma'], verbose=False)
+                    opt, gamma=self.optimizer_hparams['gamma'])
             elif self.lr_scheduler == optim.lr_scheduler.ReduceLROnPlateau:
                 scheduler = self.lr_scheduler(
                     opt, mode='min', factor=self.optimizer_hparams['reduction_factor'], 
-                    patience=20, verbose=False)
+                    patience=3)
             elif self.lr_scheduler == optim.lr_scheduler.CosineAnnealingLR: 
                 scheduler = self.lr_scheduler(
                     opt, T_max=self.optimizer_hparams['T_max'], 
-                    eta_min=1e-6, verbose=False)
+                    eta_min=1e-6)
             return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
 
     def forward(self, x, params, source_types):
@@ -139,7 +139,8 @@ class NFDELightningTraining(LightningModule):
                     )
             losses.append(loss)
         mean_loss = torch.mean(torch.stack(losses))
-        self.log(f"training_loss", mean_loss, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(f"training_loss", mean_loss, prog_bar=True, 
+                 on_step=True, on_epoch=True, sync_dist=True)
         self.train_loss_to_plot.append(mean_loss.item())
         return mean_loss
 
@@ -194,6 +195,9 @@ class NFDELightningTraining(LightningModule):
             self.val2_metrics_to_plot[name].append(val2_metrics_value)
             self.val_metrics_to_plot[name].append(val_metrics_value)
 
-            self.log(f"val1_{name}_metric", val1_metrics_value, prog_bar=True)
-            self.log(f"val2_{name}_metric", val2_metrics_value, prog_bar=True)
-            self.log(f"val_{name}_metric", val_metrics_value, prog_bar=True)
+            self.log(f"val1_{name}_metric", val1_metrics_value, 
+                     prog_bar=True, sync_dist=True)
+            self.log(f"val2_{name}_metric", val2_metrics_value, 
+                     prog_bar=True, sync_dist=True)
+            self.log(f"val_{name}_metric", val_metrics_value, 
+                     prog_bar=True, sync_dist=True)

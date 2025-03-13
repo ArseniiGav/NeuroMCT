@@ -1,7 +1,7 @@
 {
     "n_sources": 5,
     "n_flows": 50,
-    "n_units": 10,
+    "n_units": 20,
     "flow_type": "planar",
     "base_type": "normal",
     "loss_function": "kl-div",
@@ -9,12 +9,12 @@
     "learning_rate": 1e-4,
     "optimizer": "AdamW",
     "lr_scheduler": "ReduceLROnPlateau",
-    "batch_size": 64,
+    "batch_size": 1,
     "weight_decay": 1e-4,
     "reduction_factor": 0.9,
     "beta1": 0.9,
     "beta2": 0.999,
-    "accelerator": "cuda",
+    "accelerator": "cpu",
     "monitor_metric": "val_cramer_metric",
     "seed": 22,
     "n_en_values": 100000

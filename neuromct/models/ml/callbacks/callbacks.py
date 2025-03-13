@@ -1,5 +1,6 @@
 import torch
 from lightning.pytorch.callbacks import Callback
+from lightning.pytorch.utilities.rank_zero import rank_zero_only
 
 from ....plot import ModelResultsVisualizer
 
@@ -37,7 +38,8 @@ class ModelResultsVisualizerCallback(Callback):
         self.val2_params_to_vis = self.res_visualizer.val2_params_to_vis
         self.val2_source_types_to_vis = self.res_visualizer.val2_source_types_to_vis
 
-        self.x_values = torch.linspace(0.4, 16.4, 100000, dtype=torch.float64)
+        self.x_values = torch.linspace(
+            0.4, 16.4, 2000, dtype=torch.float64)
 
     def _save_spectra_plots(
             self, 
@@ -196,7 +198,7 @@ class ModelResultsVisualizerCallback(Callback):
                 val1_spectra_list = []
                 for i in range(len(self.val1_params_to_vis)):
                     val1_spectra_per_cond_set = []
-                    for j in range(len(self.training_params_to_vis[i])):
+                    for j in range(len(self.val1_params_to_vis[i])):
                         prob_x = torch.exp(
                             model.log_prob(
                                 x, 
@@ -226,6 +228,7 @@ class ModelResultsVisualizerCallback(Callback):
         torch.save(val2_spectra, f'{file_name_base}_v2.pt')
         return (training_spectra_list, val1_spectra_list, val2_spectra)
 
+    @rank_zero_only
     def on_train_epoch_end(self, trainer, pl_training_module):
         current_epoch = pl_training_module.current_epoch
         global_step = pl_training_module.global_step
@@ -259,6 +262,7 @@ class ModelResultsVisualizerCallback(Callback):
                 val_metric_names
             )
 
+    @rank_zero_only
     def on_train_end(self, trainer, pl_training_module):
         train_loss_value = trainer.callback_metrics["training_loss"].item()
         current_epoch = pl_training_module.current_epoch
