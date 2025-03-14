@@ -125,9 +125,11 @@ def objective(trial):
     
     res_visualizer_callback = ModelResultsVisualizerCallback(
         res_visualizer=model_res_visualizator,
+        approach_type=approach_type,
         base_path_to_savings=path_to_savings,
         plots_dir_name='plots',
-        predictions_dir_name='predictions'
+        predictions_dir_name='predictions',
+        val_metric_names=list(val_metric_functions.keys())
     )
 
     # Hyperparameter search space

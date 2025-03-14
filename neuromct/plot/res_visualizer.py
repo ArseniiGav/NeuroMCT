@@ -528,7 +528,7 @@ class ModelResultsVisualizer:
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
             x_to_plot,
-            val1_metrics_to_plot[1:],
+            val1_metrics_to_plot,
             color='royalblue',
             label="Validation dataset №1",
             alpha=0.9,
@@ -536,7 +536,7 @@ class ModelResultsVisualizer:
         )
         ax.plot(
             x_to_plot,
-            val2_metrics_to_plot[1:],
+            val2_metrics_to_plot,
             label="Validation dataset №2",
             color='darkred',
             alpha=0.9,
@@ -544,7 +544,7 @@ class ModelResultsVisualizer:
         )
         ax.plot(
             x_to_plot,
-            val_metrics_to_plot[1:],
+            val_metrics_to_plot,
             label="Validation datasets average",
             color='darkgreen',
             alpha=0.9,
@@ -593,7 +593,7 @@ class ModelResultsVisualizer:
 
             ax.plot(
                 x_to_plot,
-                val_metrics_to_plot[val_metric_name][1:],
+                val_metrics_to_plot[val_metric_name],
                 label=label,
                 color=color,
                 alpha=0.9,

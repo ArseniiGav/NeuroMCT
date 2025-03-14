@@ -1,6 +1,6 @@
 {
     "n_sources": 5,
-    "n_flows": 50,
+    "n_flows": 100,
     "n_units": 20,
     "flow_type": "planar",
     "base_type": "normal",

@@ -125,7 +125,8 @@ res_visualizer_callback = ModelResultsVisualizerCallback(
     approach_type=approach_type,
     base_path_to_savings=path_to_nfde_training_results,
     plots_dir_name='plots',
-    predictions_dir_name='predictions'
+    predictions_dir_name='predictions',
+    val_metric_names=list(val_metric_functions.keys())
 )
 
 logger = CSVLogger(
@@ -158,7 +159,7 @@ nfde_model_lightning_training = NFDELightningTraining(
 )
 
 trainer_nfde = Trainer(
-    max_epochs=100,
+    max_epochs=50,
     accelerator=args.accelerator,
     strategy="ddp",
     devices=25,

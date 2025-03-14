@@ -49,7 +49,7 @@ class Flow(nn.Module):
         
         n_params = n_conditions - 1
         self.param_net = nn.Sequential(
-            nn.Linear(n_params, n_units),
+            nn.Linear(n_params, n_units),    
             activation_func,
             nn.Linear(n_units, n_units),
             activation_func,

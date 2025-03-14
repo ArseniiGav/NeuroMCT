@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from lightning import LightningModule
+from lightning.pytorch.utilities.rank_zero import rank_zero_only
 
 from ..metrics import LpNormDistance
 
@@ -37,9 +38,6 @@ class NFDELightningTraining(LightningModule):
         self.x_values = torch.linspace(
             lb, rb, n_en_values, dtype=torch.float64)
 
-        self.val1_metrics_to_plot = {key: [] for key in self.val_metric_names}
-        self.val2_metrics_to_plot = {key: [] for key in self.val_metric_names}
-        self.val_metrics_to_plot = {key: [] for key in self.val_metric_names}
         self.train_loss_to_plot = []
 
         if self.loss_function == 'wasserstein':
@@ -174,10 +172,6 @@ class NFDELightningTraining(LightningModule):
                 self.val2_metrics_within_val_epoch[name].append(value)
 
     def on_validation_epoch_end(self):
-        self.val1_metrics_values = dict()
-        self.val2_metrics_values = dict()
-        self.val_metrics_values = dict()
-
         for name in self.val_metric_names:
             val1_metrics_value = torch.mean(
                 torch.tensor(self.val1_metrics_within_val_epoch[name])
@@ -186,14 +180,6 @@ class NFDELightningTraining(LightningModule):
                 torch.tensor(self.val2_metrics_within_val_epoch[name])
             ).item()
             val_metrics_value = (val1_metrics_value + val2_metrics_value) / 2
-
-            self.val1_metrics_values[name] = val1_metrics_value 
-            self.val2_metrics_values[name] = val2_metrics_value
-            self.val_metrics_values[name] = val_metrics_value
-
-            self.val1_metrics_to_plot[name].append(val1_metrics_value)
-            self.val2_metrics_to_plot[name].append(val2_metrics_value)
-            self.val_metrics_to_plot[name].append(val_metrics_value)
 
             self.log(f"val1_{name}_metric", val1_metrics_value, 
                      prog_bar=True, sync_dist=True)
