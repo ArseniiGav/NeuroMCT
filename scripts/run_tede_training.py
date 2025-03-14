@@ -24,6 +24,7 @@ from neuromct.utils import (
 )
 
 approach_type = 'tede'
+plot_every_n_train_epochs = 1
 base_path_to_models = data_configs['base_path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_tede_training_results = data_configs['path_to_tede_training_results']
@@ -34,10 +35,11 @@ os.makedirs(f'{path_to_tede_training_results}/predictions', exist_ok=True)
 
 kNPE_bins_edges = data_configs['kNPE_bins_edges']
 kNPE_bins_centers = (kNPE_bins_edges[:-1] + kNPE_bins_edges[1:]) / 2
-kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float32)
+kNPE_bins_centers = torch.tensor(kNPE_bins_centers, dtype=torch.float64)
 bin_size = data_configs['bin_size']
 
-model_res_visualizator = res_visualizator_setup(data_configs)
+model_res_visualizator = res_visualizator_setup(
+    data_configs, plot_every_n_train_epochs)
 
 args = tede_argparse()
 seed_everything(args.seed, workers=True)
@@ -133,6 +135,7 @@ early_stopping_callback = EarlyStopping(
     monitor=monitor_metric, mode="min", patience=200)
 res_visualizer_callback = ModelResultsVisualizerCallback(
     res_visualizer=model_res_visualizator,
+    approach_type=approach_type,
     base_path_to_savings=path_to_tede_training_results,
     plots_dir_name='plots',
     predictions_dir_name='predictions'
@@ -173,7 +176,7 @@ trainer_tede = Trainer(
     max_epochs=2000,
     accelerator=args.accelerator,
     devices="auto",
-    precision="16-mixed",
+    precision="64",
     callbacks=[
         checkpoint_callback,
         early_stopping_callback,

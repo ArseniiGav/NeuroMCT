@@ -25,7 +25,7 @@ def setup(model_type, device, base_path_to_models=None):
             dropout=args.dropout,
             temperature=args.temperature,
             bin_size=data_configs['bin_size']
-        ).float().to(device)
+        ).double().to(device)
 
         tede_model.load_state_dict(
             torch.load(
@@ -46,7 +46,7 @@ def setup(model_type, device, base_path_to_models=None):
             activation=args.activation_function,
             flow_type=args.flow_type,
             base_type=args.base_type
-        ).float().to(device)
+        ).double().to(device)
 
         nfde_model.load_state_dict(
             torch.load(
