@@ -22,15 +22,18 @@ from neuromct.utils import (
 )
 
 approach_type = 'nfde'
+plot_every_n_train_epochs = 1
 base_path_to_models = data_configs['base_path_to_models']
 path_to_processed_data = data_configs['path_to_processed_data']
 path_to_nfde_training_results = data_configs['path_to_nfde_training_results']
+en_limits = 0.0, 20.0
 
 os.makedirs(f'{path_to_nfde_training_results}', exist_ok=True)
 os.makedirs(f'{path_to_nfde_training_results}/plots', exist_ok=True)
 os.makedirs(f'{path_to_nfde_training_results}/predictions', exist_ok=True)
 
-# model_res_visualizator = res_visualizator_setup(data_configs)
+model_res_visualizator = res_visualizator_setup(
+    data_configs, plot_every_n_train_epochs)
 
 args = nfde_argparse()
 seed_everything(args.seed, workers=True)
@@ -66,8 +69,8 @@ train_loader = DataLoader(
 
 val1_loader = DataLoader(
     val1_data, 
-    batch_size=val1_data.__len__(), 
-    shuffle=False, 
+    batch_size=args.batch_size,
+    shuffle=True, 
     pin_memory=True
 )
 
@@ -78,7 +81,6 @@ val2_loader = DataLoader(
     pin_memory=True
 )
 
-loss_function = "kl-div"
 wasserstein_distance = LpNormDistance(p=1) # Wasserstein distance
 cramer_distance = LpNormDistance(p=2) # Cramér-von Mises distance
 ks_distance = LpNormDistance(p=torch.inf) # Kolmogorov-Smirnov distance
@@ -114,12 +116,13 @@ checkpoint_callback = ModelCheckpoint(
     save_top_k=1, monitor=monitor_metric, mode="min")
 early_stopping_callback = EarlyStopping(
     monitor=monitor_metric, mode="min", patience=200)
-# res_visualizer_callback = ModelResultsVisualizerCallback(
-#     res_visualizer=model_res_visualizator,
-#     base_path_to_savings=path_to_nfde_training_results,
-#     plots_dir_name='plots',
-#     predictions_dir_name='predictions'
-# )
+res_visualizer_callback = ModelResultsVisualizerCallback(
+    res_visualizer=model_res_visualizator,
+    approach_type=approach_type,
+    base_path_to_savings=path_to_nfde_training_results,
+    plots_dir_name='plots',
+    predictions_dir_name='predictions'
+)
 
 logger = CSVLogger(
     save_dir=path_to_nfde_training_results, 
@@ -138,7 +141,7 @@ nfde_model = NFDE(
 
 nfde_model_lightning_training = NFDELightningTraining(
     model=nfde_model,
-    loss_function=loss_function,
+    loss_function=args.loss_function,
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
@@ -146,18 +149,19 @@ nfde_model_lightning_training = NFDELightningTraining(
     lr=args.lr,
     weight_decay=args.weight_decay,
     monitor_metric=args.monitor_metric,
-    n_energies_to_gen=args.n_energies_to_gen
+    n_en_values=args.n_en_values,
+    en_limits=en_limits
 )
 
 trainer_nfde = Trainer(
-    max_epochs=2000,
+    max_epochs=100,
     accelerator=args.accelerator,
     devices="auto",
-    precision="16-mixed",
+    precision="64",
     callbacks=[
         checkpoint_callback,
         early_stopping_callback,
-        # res_visualizer_callback,
+        res_visualizer_callback,
         LearningRateMonitor(),
     ],
     logger=logger,
@@ -176,7 +180,7 @@ trainer_nfde.fit(
 best_nfde_model = NFDELightningTraining.load_from_checkpoint(
     checkpoint_path=checkpoint_callback.best_model_path,
     model=nfde_model,
-    loss_function=loss_function,
+    loss_function=args.loss_function,
     val_metric_functions=val_metric_functions,
     optimizer=optimizer,
     lr_scheduler=lr_scheduler,
@@ -184,7 +188,8 @@ best_nfde_model = NFDELightningTraining.load_from_checkpoint(
     lr=args.lr,
     weight_decay=args.weight_decay,
     monitor_metric=args.monitor_metric,
-    n_energies_to_gen=args.n_energies_to_gen
+    n_en_values=args.n_en_values,
+    en_limits=en_limits
 )
 
 torch.save(

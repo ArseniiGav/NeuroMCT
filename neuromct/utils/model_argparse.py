@@ -53,8 +53,8 @@ def nfde_argparse():
                          help="The path to the JSON config file")
     parser.add_argument("--n_flows", type=int, default=25,
                          help='The number of flows (default=25).')
-    parser.add_argument("--batch_size", type=int, default=8196,
-                         help='The batch size (default=8196).')
+    parser.add_argument("--batch_size", type=int, default=32,
+                         help='The batch size (default=32).')
     parser.add_argument("--lr", type=float, default=5e-4,
                         help='The learning rate (default=5e-4)')
     parser.add_argument("--activation_function", type=str, default="relu",
@@ -70,6 +70,9 @@ def nfde_argparse():
                                 (i.e., used for the early stopping condition). Can be val_*_metric, 
                                 where * is either "cramer" or "wasserstein", or "ks". 
                                 Default=val_cramer_metric.''')
+    parser.add_argument("--n_en_values", type=int, default=100000,
+                         help='''The number of energy values for log_prob estimation 
+                                 during training of the NFDE model (default=100000)''')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:
