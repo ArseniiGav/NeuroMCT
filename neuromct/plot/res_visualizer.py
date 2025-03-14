@@ -460,7 +460,7 @@ class ModelResultsVisualizer:
             label = (r"$L_{\rm NLL} = "
                     r"-\frac{1}{|B|} \sum_{i=1}^{|B|} \ \left( \frac{1}{N_i} \sum_{j=1}^{N_i}"
                     r"\log(p_{\theta} \left(\mathbf{X}_{i,j}\right) \right)$")
-            ytitle = "Model NLL-divergence loss: " + r"$L_{\rm NLL}$"
+            ytitle = "Model NLL loss: " + r"$L_{\rm NLL}$"
             yscale = "symlog"
             ylims = -1e1, 1e2
             title = ("The loss averaged over the last batch: " + 
@@ -524,7 +524,7 @@ class ModelResultsVisualizer:
 
             ylabel = "Kolmogorov-Smirnov distance: " + r"$d^{V}_{\infty}$"
 
-        x_to_plot = np.arange(1, current_epoch+1)
+        x_to_plot = np.arange(1, current_epoch+2)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
             x_to_plot,
@@ -573,7 +573,7 @@ class ModelResultsVisualizer:
             path_to_save: str
         ) -> None:
         ylabel = "Validation metrics: " + r"$d^{V}_{p}$"
-        x_to_plot = np.arange(1, current_epoch+1)
+        x_to_plot = np.arange(1, current_epoch+2)
         title = ""
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
