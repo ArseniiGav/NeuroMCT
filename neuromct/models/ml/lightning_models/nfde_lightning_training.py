@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from lightning import LightningModule
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
 
 from ..metrics import LpNormDistance
 
@@ -95,7 +94,7 @@ class NFDELightningTraining(LightningModule):
             elif self.lr_scheduler == optim.lr_scheduler.CosineAnnealingLR: 
                 scheduler = self.lr_scheduler(
                     opt, T_max=self.optimizer_hparams['T_max'], 
-                    eta_min=1e-6)
+                    eta_min=1e-7)
             return [opt], [{'scheduler': scheduler, 'monitor': self.monitor_metric}]
 
     def forward(self, x, params, source_types):
