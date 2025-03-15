@@ -1,3 +1,11 @@
+"""
+Transformer Encoder Density Estimation (TEDE) model implementation.
+
+This module implements a transformer-based model for energy spectrum estimation.
+The model uses a transformer encoder architecture to process LS parameters
+and source types to predict energy spectrum probability densities.
+"""
+
 import torch
 import torch.nn as nn
 
@@ -5,6 +13,41 @@ from .modules import Softmax
 
 
 class TEDE(nn.Module):
+    """
+    Transformer Encoder Density Estimation (TEDE) model.
+
+    This model implements a transformer encoder-based architecture for energy spectrum estimation.
+    It processes LS parameters and source types through a transformer encoder
+    to predict the probability density function of the energy spectrum.
+
+    The model architecture consists of:
+    1. Input embeddings for parameters and source types
+    2. A transformer encoder for feature processing
+    3. Regression head for final bin-to-bin density estimation
+
+    Parameters
+    ----------
+    n_sources : int
+        Number of different calibration source types.
+    output_dim : int
+        Number of bins in the energy spectrum.
+    activation : str
+        Activation function for the transformer layers. Options: 'relu', 'gelu'.
+    d_model : int
+        Dimension of the transformer model's internal representation.
+    nhead : int
+        Number of attention heads in the transformer encoder.
+    num_encoder_layers : int
+        Number of transformer encoder layers.
+    dim_feedforward : int
+        Dimension of the feedforward network in transformer layers.
+    dropout : float
+        Dropout rate for regularization in the transformer layers.
+    temperature : float
+        Temperature parameter for Softmax scaling.
+    bin_size : torch.Tensor
+        Bin size of the energy spectrum.
+    """
     def __init__(self,
              n_sources: int,
              output_dim: int,
@@ -15,7 +58,7 @@ class TEDE(nn.Module):
              dim_feedforward: int,
              dropout: float,
              temperature: float,
-             bin_size: float
+             bin_size: torch.Tensor
         ):
         super(TEDE, self).__init__()
         self.bin_size = bin_size
@@ -55,6 +98,30 @@ class TEDE(nn.Module):
         )
 
     def forward(self, params, source_types):
+        """
+        Forward pass through the TEDE model.
+
+        Parameters
+        ----------
+        params : torch.Tensor
+            LS parameters of shape [batch_size, param_dim].
+        source_types : torch.Tensor
+            Source type indices of shape [batch_size].
+
+        Returns
+        -------
+        torch.Tensor
+            Predicted PDF encoded in output_dim number of bins: [batch_size, output_dim].
+
+        Notes
+        -----
+        The forward pass consists of the following steps:
+        1. Embed source types and parameters
+        2. Concatenate embeddings for transformer input
+        3. Process through transformer encoder
+        4. Project to output dimension
+        5. Apply temperature-scaled Softmax for normalization
+        """
         params = params.unsqueeze(2) # [B, param_dim] -> [B, param_dim, 1]
         param_emb = self.param_emb_embedding(params) # [B, param_dim, 1] -> [B, param_dim, d_model]
         source_type_emb = self.source_type_embedding(source_types) #  [B, 1] -> [B, 1, d_model]
