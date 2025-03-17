@@ -1,5 +1,5 @@
 """
-Normalizing Flows Density Estimation (NFDE) model implementation.
+Normalizing Flows Density Estimator (NFDE) model implementation.
 
 This module implements a conditional normalizing flow model for energy spectrum estimation.
 The model uses a sequence of planar or radial flows to transform a complex spectrum to a known base distribution,
@@ -29,9 +29,11 @@ class Flow(nn.Module):
     n_units : int
         The number of hidden units in the intermediate layers of the FCNN.
     activation : str
-        The activation function to use in the FCNN. Options: 'relu', 'gelu', 'tanh', 'silu'.
+        The activation function to use in the FCNN. 
+        Options: 'relu', 'gelu', 'tanh', 'silu'.
     flow_type : str
-        The type of flow to use. Options: 'planar' or 'radial'.
+        The type of flow to use. 
+        Options: 'planar' or 'radial'.
     dropout : float
         Dropout rate for regularization.
     """
@@ -254,7 +256,7 @@ class Flow(nn.Module):
 
 class NFDE(nn.Module):
     """
-    Normalizing Flows Density Estimation (NFDE) model.
+    Normalizing Flows Density Estimator (NFDE) model.
 
     This model implements a sequence of normalizing flows for energy spectrum estimation.
     It uses multiple flows (planar or radial) to transform a complex energy spectrum into a known base distribution,
@@ -322,7 +324,7 @@ class NFDE(nn.Module):
         n_units : int
             Number of hidden units in each flow's neural network.
         activation : str
-            Activation the function type.
+            Activation function for the flow's parameter neural networks.
         flow_type : str
             Type of the normalizing flow.
         dropout : float
@@ -338,7 +340,12 @@ class NFDE(nn.Module):
             for _ in range(n_flows)
         ])
 
-    def _log_prob_comp(self, x: torch.Tensor, params: torch.Tensor, source_types: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def _log_prob_comp(
+            self, 
+            x: torch.Tensor, 
+            params: torch.Tensor, 
+            source_types: torch.Tensor
+        ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Helper method to compute log-probabilities.
 
@@ -361,7 +368,12 @@ class NFDE(nn.Module):
         base_log_prob = -0.5 * (z ** 2 + torch.log(2 * self.pi))
         return base_log_prob, log_det_jacobian
 
-    def forward(self, x: torch.Tensor, params: torch.Tensor, source_types: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+            self, 
+            x: torch.Tensor, 
+            params: torch.Tensor, 
+            source_types: torch.Tensor
+        ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass through the NFDE model (normalizing direction).
 
@@ -410,7 +422,12 @@ class NFDE(nn.Module):
         x = z
         return x
 
-    def log_prob(self, x: torch.Tensor, params: torch.Tensor, source_types: torch.Tensor) -> torch.Tensor:
+    def log_prob(
+            self, 
+            x: torch.Tensor, 
+            params: torch.Tensor, 
+            source_types: torch.Tensor
+        ) -> torch.Tensor:
         """
         Compute log-probabilities of input x under the input conditions.
         Density estimation.
@@ -432,7 +449,12 @@ class NFDE(nn.Module):
         base_log_prob, log_det_jacobian = self._log_prob_comp(x, params, source_types)
         return base_log_prob + log_det_jacobian
 
-    def generate_energies(self, n_en_values: int, params: torch.Tensor, source_types: torch.Tensor) -> torch.Tensor:
+    def generate_energies(
+            self, 
+            n_en_values: int, 
+            params: torch.Tensor, 
+            source_types: torch.Tensor
+        ) -> torch.Tensor:
         """
         Generate energy samples from the model.
 

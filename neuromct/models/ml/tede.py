@@ -1,5 +1,5 @@
 """
-Transformer Encoder Density Estimation (TEDE) model implementation.
+Transformer Encoder Density Estimator (TEDE) model implementation.
 
 This module implements a transformer-based model for energy spectrum estimation.
 The model uses a transformer encoder architecture to process LS parameters
@@ -14,7 +14,7 @@ from .modules import Softmax
 
 class TEDE(nn.Module):
     """
-    Transformer Encoder Density Estimation (TEDE) model.
+    Transformer Encoder Density Estimator (TEDE) model.
 
     This model implements a transformer encoder-based architecture for energy spectrum estimation.
     It processes LS parameters and source types through a transformer encoder
@@ -32,7 +32,8 @@ class TEDE(nn.Module):
     output_dim : int
         Number of bins in the energy spectrum.
     activation : str
-        Activation function for the transformer layers. Options: 'relu', 'gelu'.
+        Activation function for the transformer layers. 
+        Options: 'relu', 'gelu'.
     d_model : int
         Dimension of the transformer model's internal representation.
     nhead : int
