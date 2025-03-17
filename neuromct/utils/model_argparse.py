@@ -35,6 +35,16 @@ def tede_argparse():
                                 (i.e., used for the early stopping condition). Can be val_*_metric, 
                                 where * is either "cramer" or "wasserstein", or "ks". 
                                 Default=val_cramer_metric.''')
+    parser.add_argument("--optimizer", type=str, default="AdamW",
+                         help='The optimizer to use (default="AdamW")')
+    parser.add_argument("--lr_scheduler", type=str, default="CosineAnnealingLR",
+                         help='The learning rate scheduler to use (default="CosineAnnealingLR")')
+    parser.add_argument("--weight_decay", type=float, default=1e-4,
+                         help='Weight decay for optimizer (default=1e-4)')
+    parser.add_argument("--accelerator", type=str, default="gpu",
+                         help='Device to use for training (default="gpu")')
+    parser.add_argument("--seed", type=int, default=22,
+                         help='Random seed for reproducibility (default=22)')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:
@@ -58,10 +68,11 @@ def nfde_argparse():
     parser.add_argument("--learning_rate", type=float, default=5e-4,
                         help='The learning rate (default=5e-4)')
     parser.add_argument("--activation_function", type=str, default="relu",
-                        help='Activation function of the hidden layers. Either "relu" or "gelu"; (default="relu")')
-    parser.add_argument("--activation_function", type=str, default="kl-div",
+                        help="""Activation function of the hidden layers.
+                                Options: "relu", "gelu", "silu", "tanh"; (default="relu")""")
+    parser.add_argument("--loss_function", type=str, default="kl-div",
                          help="""Loss function to train the model.
-                                 Either "kl-div", "wasserstein", or "cramer" (default="kl-div")""")
+                                 Options: "kl-div", "wasserstein", or "cramer" (default="kl-div")""")
     parser.add_argument("--n_units", type=int, default=20,
                          help="The number of units in a flow's conditional network (default=20)")
     parser.add_argument("--flow_type", type=str, default="planar",
@@ -76,6 +87,16 @@ def nfde_argparse():
     parser.add_argument("--n_en_values", type=int, default=100000,
                          help='''The number of energy values for log_prob estimation 
                                  during training of the NFDE model (default=100000)''')
+    parser.add_argument("--optimizer", type=str, default="AdamW",
+                         help='The optimizer to use (default="AdamW")')
+    parser.add_argument("--lr_scheduler", type=str, default="CosineAnnealingLR",
+                         help='The learning rate scheduler to use (default="CosineAnnealingLR")')
+    parser.add_argument("--weight_decay", type=float, default=1e-4,
+                         help='Weight decay for optimizer (default=1e-4)')
+    parser.add_argument("--accelerator", type=str, default="cpu",
+                         help='Device to use for training (default="cpu")')
+    parser.add_argument("--seed", type=int, default=22,
+                         help='Random seed for reproducibility (default=22)')
     args = parser.parse_args("") # "" is used to avoid errors with Ipython
 
     if args.config:
