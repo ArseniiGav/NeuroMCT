@@ -21,6 +21,7 @@ The script saves trained models, logs, and visualizations in the specified outpu
 
 import os
 import argparse
+import json
 
 import torch
 import torch.optim as optim
@@ -368,6 +369,30 @@ def main():
         train_dataloaders=train_loader,
         val_dataloaders=[val1_loader, val2_loader]
     )
+
+    callbacks_dict = torch.load(
+        checkpoint_callback.best_model_path,
+        map_location="cpu"
+    )['callbacks']
+
+    for key in callbacks_dict.keys():
+        if "ModelCheckpoint" in key:
+            model_checkpoint_key = key
+        elif "EarlyStopping" in key:
+            early_stopping_key = key
+    best_model_score = callbacks_dict[model_checkpoint_key]["best_model_score"].item()
+    stopped_epoch = callbacks_dict[early_stopping_key]["stopped_epoch"]
+
+    # Save some results info
+    results_info = {
+        'best_model_score': best_model_score,
+        'stopped_epoch': stopped_epoch
+    }
+
+    results_info_filepath = os.path.join(
+        path_to_training_results, f'results_info.json')
+    with open(results_info_filepath, 'w') as f:
+        json.dump(results_info, f, indent=6)
 
     # Load best model and save it
     if approach_type == 'nfde':
