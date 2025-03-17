@@ -99,7 +99,6 @@ def setup_data_and_paths(args, approach_type):
     if approach_type == 'nfde':
         en_limits = (0.0, 20.0)
         n_en_values = 100000
-        plot_every_n_train_epochs = 1
         extra_config = {
             'en_limits': en_limits,
             'n_en_values': n_en_values
@@ -111,7 +110,6 @@ def setup_data_and_paths(args, approach_type):
             dtype=torch.float64
         )
         bin_size = data_configs['bin_size']
-        plot_every_n_train_epochs = 50
         training_data_transforms = define_transformations("training", bin_size)
         val_data_transforms = define_transformations("val", bin_size)
         extra_config = {
@@ -121,8 +119,7 @@ def setup_data_and_paths(args, approach_type):
             'val_data_transforms': val_data_transforms
         }
 
-    return (path_to_processed_data, path_to_hopt_results, 
-            plot_every_n_train_epochs, extra_config)
+    return path_to_processed_data, path_to_hopt_results, extra_config
 
 def create_dataloaders(approach_type, path_to_processed_data, 
                        batch_size, data_transforms=False):
@@ -454,7 +451,7 @@ def create_model_and_training(approach_type, main_hparams, optimizer, lr_schedul
     
     return model, model_lightning_training
 
-def objective(trial, args, approach_type, path_to_processed_data, 
+def objective(trial, args, path_to_processed_data, 
               path_to_hopt_results, extra_config):
     """Objective function for hyperparameter optimization.
 
@@ -467,7 +464,6 @@ def objective(trial, args, approach_type, path_to_processed_data,
     Args:
         trial (optuna.Trial): Optuna trial object
         args (argparse.Namespace): Command line arguments
-        approach_type (str): Type of approach ('nfde' or 'tede')
         path_to_processed_data (str): Path to the processed dataset
         path_to_hopt_results (str): Path to save results
         extra_config (dict): Additional configuration parameters
@@ -476,12 +472,12 @@ def objective(trial, args, approach_type, path_to_processed_data,
         float: Validation metric value (lower is better)
     """
     # Initialize KL divergence loss for TEDE
-    if approach_type == 'tede':
+    if args.approach_type == 'tede':
         kl_div = GeneralizedKLDivLoss(
             log_input=False, log_target=False, reduction='batchmean')
     
     # Get hyperparameters search space
-    main_hparams = (get_nfde_search_space(trial) if approach_type == 'nfde' 
+    main_hparams = (get_nfde_search_space(trial) if args.approach_type == 'nfde' 
                    else get_tede_search_space(trial))
     
     # Get optimizer parameters
@@ -502,7 +498,7 @@ def objective(trial, args, approach_type, path_to_processed_data,
     
     logger = CSVLogger(
         save_dir=path_to_savings,
-        name=f"{approach_type}_{trial.number}"
+        name=f"{args.approach_type}_{trial.number}"
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -511,17 +507,17 @@ def objective(trial, args, approach_type, path_to_processed_data,
     early_stopping_callback = EarlyStopping(
         monitor=args.monitor_metric, 
         mode="min", 
-        patience=200 if approach_type == 'tede' else 10
+        patience=200 if args.approach_type == 'tede' else 10
     )
 
     model_res_visualizator = res_visualizator_setup(
         data_configs, 
-        plot_every_n_train_epochs=50 if approach_type == 'tede' else 1
+        plot_every_n_train_epochs=50 if args.approach_type == 'tede' else 1
     )
     
     res_visualizer_callback = ModelResultsVisualizerCallback(
         res_visualizer=model_res_visualizator,
-        approach_type=approach_type,
+        approach_type=args.approach_type,
         base_path_to_savings=path_to_savings,
         plots_dir_name='plots',
         predictions_dir_name='predictions',
@@ -533,24 +529,24 @@ def objective(trial, args, approach_type, path_to_processed_data,
 
     # Create dataloaders
     train_loader, val1_loader, val2_loader = create_dataloaders(
-        approach_type,
+        args.approach_type,
         path_to_processed_data,
         main_hparams['batch_size'],
-        extra_config if approach_type == 'tede' else False
+        extra_config if args.approach_type == 'tede' else False
     )
 
     # Create model and training module
     model, model_lightning_training = create_model_and_training(
-        approach_type, main_hparams, optimizer, lr_scheduler, optimizer_hparams,
+        args.approach_type, main_hparams, optimizer, lr_scheduler, optimizer_hparams,
         val_metric_functions, args.monitor_metric, extra_config
     )
 
     # Create trainer
     trainer = Trainer(
-        max_epochs=2000 if approach_type == 'tede' else 100,
+        max_epochs=2000 if args.approach_type == 'tede' else 100,
         accelerator=args.accelerator,
-        strategy="ddp_spawn" if approach_type == 'nfde' else None,
-        devices=50 if approach_type == 'nfde' else "auto",
+        strategy="ddp_spawn" if args.approach_type == 'nfde' else None,
+        devices=50 if args.approach_type == 'nfde' else "auto",
         precision="64",
         callbacks=[
             checkpoint_callback,
@@ -574,25 +570,27 @@ def objective(trial, args, approach_type, path_to_processed_data,
         val_dataloaders=[val1_loader, val2_loader]
     )
 
-    if approach_type == 'nfde':
+    if args.approach_type == 'nfde':
         pruning_callback.check_pruned()
 
     # Load the best model and get the score
-    checkpoint_dict = torch.load(
-        checkpoint_callback.best_model_path, map_location="cpu")
+    callbacks_dict = torch.load(
+        checkpoint_callback.best_model_path, 
+        map_location="cpu"
+    )['callbacks']
 
-    for key in checkpoint_dict['callbacks'].keys():
+    for key in callbacks_dict.keys():
         if "ModelCheckpoint" in key:
             model_checkpoint_key = key
-    best_model_score = checkpoint_dict['callbacks'][model_checkpoint_key]["best_model_score"]
+    best_model_score = callbacks_dict[model_checkpoint_key]["best_model_score"]
     trial_value = best_model_score.item()
     print(trial_value)
 
     # Save the best model state
-    best_model = (NFDELightningTraining if approach_type == 'nfde' else TEDELightningTraining).load_from_checkpoint(
+    best_model = (NFDELightningTraining if args.approach_type == 'nfde' else TEDELightningTraining).load_from_checkpoint(
         checkpoint_path=checkpoint_callback.best_model_path,
         model=model,
-        loss_function='kl-div' if approach_type == 'nfde' else kl_div,
+        loss_function='kl-div' if args.approach_type == 'nfde' else kl_div,
         val_metric_functions=val_metric_functions,
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
@@ -603,14 +601,14 @@ def objective(trial, args, approach_type, path_to_processed_data,
         **({
             'n_en_values': extra_config['n_en_values'],
             'en_limits': extra_config['en_limits']
-        } if approach_type == 'nfde' else {
+        } if args.approach_type == 'nfde' else {
             'bins_centers': extra_config['kNPE_bins_centers']
         })
     )
 
     torch.save(
         best_model.model.state_dict(),
-        f"{path_to_savings}/{approach_type}_model.pth"
+        f"{path_to_savings}/{args.approach_type}_model.pth"
     )
 
     # Save trial information
@@ -660,7 +658,7 @@ def main():
 
     # Set up environment and configurations
     setup_environment(args.approach_type)
-    path_to_processed_data, path_to_hopt_results, plot_every_n_train_epochs, extra_config = setup_data_and_paths(
+    path_to_processed_data, path_to_hopt_results, extra_config = setup_data_and_paths(
         args, args.approach_type)
 
     seed_everything(args.seed, workers=True)
@@ -689,11 +687,10 @@ def main():
     # Run optimization
     study.optimize(
         lambda trial: objective(
-            trial, args, args.approach_type, path_to_processed_data, 
+            trial, args, path_to_processed_data, 
             path_to_hopt_results, extra_config
         ),
         n_trials=args.n_trials,
-        timeout=None if args.approach_type == 'tede' else 600
     )
 
     # Save results
