@@ -1,24 +1,20 @@
 """
-Script for training NFDE and TEDE models.
-
-This script provides a unified interface for training both Neural Flow Density Estimation (NFDE)
-and Transformer Energy Density Estimation (TEDE) models. It uses PyTorch Lightning for training
+This script provides a unified interface for training both Normalizing Flows Density Estimator (NFDE)
+and Transformer Encoder Density Estimator (TEDE) models. It uses PyTorch Lightning for training
 and supports different configurations for each approach.
 
 The script handles:
-- Model creation and configuration
 - Data loading and preprocessing
-- Training and validation setup
-- Metric computation and monitoring
+- Model initialization and training
 - Model checkpointing and early stopping
-- Result visualization and logging
+- Results visualization and logging
 
 Example usage:
     # For NFDE training
-    python run_training.py --approach_type nfde [additional nfde args]
+    python run_training.py --approach_type nfde
 
     # For TEDE training
-    python run_training.py --approach_type tede [additional tede args]
+    python run_training.py --approach_type tede
 
 The script saves trained models, logs, and visualizations in the specified output directories.
 """
