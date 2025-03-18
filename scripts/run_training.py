@@ -286,7 +286,6 @@ def main():
             n_units=args.n_units,
             activation=args.activation_function,
             flow_type=args.flow_type,
-            dropout=args.dropout
         )
         
         model_lightning_training = NFDELightningTraining(

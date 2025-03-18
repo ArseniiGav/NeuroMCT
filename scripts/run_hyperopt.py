@@ -208,12 +208,11 @@ def get_nfde_search_space(trial):
             - learning_rate: Initial learning rate
             - optimizer: Optimizer type
             - lr_scheduler: Learning rate scheduler type
-            - dropout: Dropout rate
             - batch_size: Training batch size
     """
     main_hparams = {
         'n_flows': trial.suggest_int(
-            'n_flows', 20, 200, step=5),
+            'n_flows', 50, 200, step=5),
         'n_units': trial.suggest_categorical(
             'n_units', [5, 10, 20, 50]),
         'activation_function': trial.suggest_categorical(
@@ -229,8 +228,6 @@ def get_nfde_search_space(trial):
             'lr_scheduler', 
             ['ExponentialLR', 'ReduceLROnPlateau', 
              'CosineAnnealingLR', 'None']),
-        'dropout': trial.suggest_float(
-            'dropout', 0.0, 0.25, step=0.01),
         'batch_size': trial.suggest_int(
             'batch_size', 1, 5, step=1),
     }
@@ -349,7 +346,6 @@ def get_initial_hparams(approach_type):
             'learning_rate': 1e-4,
             'optimizer': 'AdamW',
             'lr_scheduler': 'ReduceLROnPlateau',
-            'dropout': 0.0,
             'batch_size': 1,
             'weight_decay': 1e-4,
             'reduction_factor': 0.9,
@@ -403,7 +399,6 @@ def create_model_and_training(approach_type, main_hparams, optimizer, lr_schedul
             n_units=main_hparams['n_units'],
             activation=main_hparams['activation_function'],
             flow_type=main_hparams['flow_type'],
-            dropout=main_hparams['dropout']
         )
         
         model_lightning_training = NFDELightningTraining(
@@ -507,7 +502,7 @@ def objective(trial, args, path_to_processed_data,
     early_stopping_callback = EarlyStopping(
         monitor=args.monitor_metric, 
         mode="min", 
-        patience=200 if args.approach_type == 'tede' else 10
+        patience=200 if args.approach_type == 'tede' else 20
     )
 
     model_res_visualizator = res_visualizator_setup(
@@ -543,7 +538,7 @@ def objective(trial, args, path_to_processed_data,
 
     # Create trainer
     trainer = Trainer(
-        max_epochs=2000 if args.approach_type == 'tede' else 100,
+        max_epochs=2000 if args.approach_type == 'tede' else 125,
         accelerator=args.accelerator,
         strategy="ddp_spawn" if args.approach_type == 'nfde' else None,
         devices=50 if args.approach_type == 'nfde' else "auto",

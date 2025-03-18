@@ -34,8 +34,6 @@ class Flow(nn.Module):
     flow_type : str
         The type of flow to use. 
         Options: 'planar' or 'radial'.
-    dropout : float
-        Dropout rate for regularization.
     """
     def __init__(self,
             n_conditions: int,
@@ -43,7 +41,6 @@ class Flow(nn.Module):
             n_units: int,
             activation: str,
             flow_type: str, 
-            dropout: float,
         ):
         super().__init__()
         self.flow_type = flow_type
@@ -64,10 +61,8 @@ class Flow(nn.Module):
         self.param_net = nn.Sequential(
             nn.Linear(n_params, n_units),    
             activation_func,
-            nn.Dropout(dropout),
             nn.Linear(n_units, n_units),
             activation_func,
-            nn.Dropout(dropout),
             nn.Linear(n_units, n_units),
         )
         self.source_type_embedding = nn.Embedding(n_sources, n_units)
@@ -76,10 +71,8 @@ class Flow(nn.Module):
         self.conditions_to_params_net = nn.Sequential(
             nn.Linear(n_units_combined, n_units_combined),
             activation_func,
-            nn.Dropout(dropout),
             nn.Linear(n_units_combined, n_units_combined // 2),
             activation_func,
-            nn.Dropout(dropout),
             nn.Linear(n_units_combined // 2, 3),
         )
 
@@ -282,8 +275,6 @@ class NFDE(nn.Module):
     flow_type : str
         Type of normalizing flow to use. 
         Options: 'planar' or 'radial'.
-    dropout : float
-        Dropout rate for regularization in the flow's parameter neural networks.
     """
 
     def __init__(self, 
@@ -293,12 +284,11 @@ class NFDE(nn.Module):
             n_units: int,
             activation: str,
             flow_type: str,
-            dropout: float
         ):
         super().__init__()
         self.flows = self._flows_block(
             n_flows, n_conditions, n_sources, n_units, 
-            activation, flow_type, dropout)
+            activation, flow_type)
         self.pi = torch.tensor(math.pi, dtype=torch.float64)
 
     def _flows_block(self, 
@@ -308,7 +298,6 @@ class NFDE(nn.Module):
             n_units: int, 
             activation: str, 
             flow_type: str,
-            dropout: float
         ) -> nn.ModuleList:
         """
         Create a sequence of normalizing flow layers.
@@ -327,8 +316,6 @@ class NFDE(nn.Module):
             Activation function for the flow's parameter neural networks.
         flow_type : str
             Type of the normalizing flow.
-        dropout : float
-            Dropout rate.
 
         Returns
         -------
@@ -336,7 +323,7 @@ class NFDE(nn.Module):
             List of the normalizing flows.
         """
         return nn.ModuleList([
-            Flow(n_conditions, n_sources, n_units, activation, flow_type, dropout)
+            Flow(n_conditions, n_sources, n_units, activation, flow_type)
             for _ in range(n_flows)
         ])
 
