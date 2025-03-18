@@ -460,7 +460,7 @@ class ModelResultsVisualizer:
             label = (r"$L_{\rm NLL} = "
                     r"-\frac{1}{|B|} \sum_{i=1}^{|B|} \ \left( \frac{1}{N_i} \sum_{j=1}^{N_i}"
                     r"\log(p_{\theta} \left(\mathbf{X}_{i,j}\right) \right)$")
-            ytitle = "Model NLL-divergence loss: " + r"$L_{\rm NLL}$"
+            ytitle = "Model NLL loss: " + r"$L_{\rm NLL}$"
             yscale = "symlog"
             ylims = -1e1, 1e2
             title = ("The loss averaged over the last batch: " + 
@@ -515,7 +515,7 @@ class ModelResultsVisualizer:
             title += r"$d^{V}_{2} = \frac{1}{2} \left(d^{V_1}_{2} + d^{V_2}_{2}\right)$"
             title += f' = {val_metric_value:.4f}'
 
-            ylabel = "Cramér-von Mises distance: " + r"$d^{V}_{1}$"
+            ylabel = "Cramér-von Mises distance: " + r"$d^{V}_{2}$"
         elif val_metric_name == "ks":
             title = r"$d^{V_1}_{\infty}$ " + f"= {val1_metric_value:.4f}; "
             title += r"$d^{V_2}_{\infty}$ " + f"{val2_metric_value:.4f}; "
@@ -524,11 +524,11 @@ class ModelResultsVisualizer:
 
             ylabel = "Kolmogorov-Smirnov distance: " + r"$d^{V}_{\infty}$"
 
-        x_to_plot = np.arange(1, current_epoch+1)
+        x_to_plot = np.arange(1, current_epoch+2)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
             x_to_plot,
-            val1_metrics_to_plot[1:],
+            val1_metrics_to_plot,
             color='royalblue',
             label="Validation dataset №1",
             alpha=0.9,
@@ -536,7 +536,7 @@ class ModelResultsVisualizer:
         )
         ax.plot(
             x_to_plot,
-            val2_metrics_to_plot[1:],
+            val2_metrics_to_plot,
             label="Validation dataset №2",
             color='darkred',
             alpha=0.9,
@@ -544,7 +544,7 @@ class ModelResultsVisualizer:
         )
         ax.plot(
             x_to_plot,
-            val_metrics_to_plot[1:],
+            val_metrics_to_plot,
             label="Validation datasets average",
             color='darkgreen',
             alpha=0.9,
@@ -553,7 +553,7 @@ class ModelResultsVisualizer:
         ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 2e-1)
+        ax.set_ylim(0.75e-3, 1.5e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=15)
 
@@ -573,19 +573,19 @@ class ModelResultsVisualizer:
             path_to_save: str
         ) -> None:
         ylabel = "Validation metrics: " + r"$d^{V}_{p}$"
-        x_to_plot = np.arange(1, current_epoch+1)
+        x_to_plot = np.arange(1, current_epoch+2)
         title = ""
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         for val_metric_name in val_metric_names:
             if val_metric_name == "wasserstein":
                 color = "indigo"
-                title += r"$d^{V}_{2}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
-                label = "Wasserstein distance: " + r"$d_2^{V}$"
+                title += r"$d^{V}_{1}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Wasserstein distance: " + r"$d_1^{V}$"
             elif val_metric_name == "cramer":
                 color = "#3971ac"
-                title += r"$d^{V}_{1}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
-                label = "Cramér-von Mises distance: " + r"$d_1^{V}$"
+                title += r"$d^{V}_{2}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
+                label = "Cramér-von Mises distance: " + r"$d_2^{V}$"
             elif val_metric_name == "ks":
                 color = "lightslategrey"
                 title += r"$d^{V}_{\infty}$ " + f"= {val_metric_values[val_metric_name]:.4f}; "
@@ -593,7 +593,7 @@ class ModelResultsVisualizer:
 
             ax.plot(
                 x_to_plot,
-                val_metrics_to_plot[val_metric_name][1:],
+                val_metrics_to_plot[val_metric_name],
                 label=label,
                 color=color,
                 alpha=0.9,
@@ -604,7 +604,7 @@ class ModelResultsVisualizer:
         ax.set_ylabel(ylabel, fontsize=16, color='black')
         ax.set_xlabel('Epoch', fontsize=16)
         ax.set_yscale("log")
-        ax.set_ylim(1e-3, 2e-1)
+        ax.set_ylim(0.75e-3, 1.5e-1)
         ax.tick_params(axis='y', labelsize=14, labelcolor='black')
         ax.legend(loc="upper right", fontsize=16)
 

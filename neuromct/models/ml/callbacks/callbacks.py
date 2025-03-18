@@ -12,6 +12,7 @@ class ModelResultsVisualizerCallback(Callback):
             base_path_to_savings: str,
             plots_dir_name: str,
             predictions_dir_name: str,
+            val_metric_names: str
         ):
         super().__init__()
         self.res_visualizer = res_visualizer
@@ -37,7 +38,13 @@ class ModelResultsVisualizerCallback(Callback):
         self.val2_params_to_vis = self.res_visualizer.val2_params_to_vis
         self.val2_source_types_to_vis = self.res_visualizer.val2_source_types_to_vis
 
-        self.x_values = torch.linspace(0.4, 16.4, 100000, dtype=torch.float64)
+        self.x_values = torch.linspace(
+            0.4, 16.4, 2000, dtype=torch.float64)
+
+        self.val_metric_names = val_metric_names
+        self.val1_metrics_to_plot = {key: [] for key in self.val_metric_names}
+        self.val2_metrics_to_plot = {key: [] for key in self.val_metric_names}
+        self.val_metrics_to_plot = {key: [] for key in self.val_metric_names}
 
     def _save_spectra_plots(
             self, 
@@ -196,7 +203,7 @@ class ModelResultsVisualizerCallback(Callback):
                 val1_spectra_list = []
                 for i in range(len(self.val1_params_to_vis)):
                     val1_spectra_per_cond_set = []
-                    for j in range(len(self.training_params_to_vis[i])):
+                    for j in range(len(self.val1_params_to_vis[i])):
                         prob_x = torch.exp(
                             model.log_prob(
                                 x, 
@@ -227,19 +234,76 @@ class ModelResultsVisualizerCallback(Callback):
         return (training_spectra_list, val1_spectra_list, val2_spectra)
 
     def on_train_epoch_end(self, trainer, pl_training_module):
-        current_epoch = pl_training_module.current_epoch
-        global_step = pl_training_module.global_step
+        train_loss_value = trainer.callback_metrics["training_loss"].item()
 
-        condition_to_plot = (
-            global_step > 0 and \
-            current_epoch % self.plot_every_n_train_epochs == 0
-        )
-        if condition_to_plot:
-            train_loss_value = trainer.callback_metrics["training_loss"].item()
-            val1_metrics_values = pl_training_module.val1_metrics_values
-            val2_metrics_values = pl_training_module.val2_metrics_values
-            val_metric_names = pl_training_module.val_metric_names
+        val1_metrics_values = dict()
+        val2_metrics_values = dict()
+        val_metrics_values = dict()
+
+        for name in self.val_metric_names:
+            val1_metrics_value = trainer.callback_metrics[f"val1_{name}_metric"].item()
+            val2_metrics_value = trainer.callback_metrics[f"val2_{name}_metric"].item()
+            val_metrics_value = trainer.callback_metrics[f"val_{name}_metric"].item()
+
+            val1_metrics_values[name] = val1_metrics_value
+            val2_metrics_values[name] = val2_metrics_value
+            val_metrics_values[name] = val_metrics_value
+
+        if trainer.is_global_zero:
             device = pl_training_module.device
+            current_epoch = pl_training_module.current_epoch
+            global_step = pl_training_module.global_step
+
+            for name in self.val_metric_names:
+                self.val1_metrics_to_plot[name].append(val1_metrics_values[name])
+                self.val2_metrics_to_plot[name].append(val2_metrics_values[name])
+                self.val_metrics_to_plot[name].append(val_metrics_values[name])
+
+            condition_to_plot = (
+                global_step > 0 and \
+                current_epoch % self.plot_every_n_train_epochs == 0
+            )
+            if condition_to_plot:
+                training_spectra, val1_spectra, val2_spectra = self._get_predictions(
+                    model=pl_training_module.model, 
+                    device=device, 
+                    current_epoch=current_epoch, 
+                    global_step=global_step
+                )
+                self._save_spectra_plots(
+                    train_loss_value,
+                    val1_metrics_values,
+                    val2_metrics_values,
+                    training_spectra,
+                    val1_spectra,
+                    val2_spectra,
+                    current_epoch,
+                    global_step,
+                    self.val_metric_names
+                )
+
+    def on_train_end(self, trainer, pl_training_module):
+        train_loss_value = trainer.callback_metrics["training_loss"].item()
+
+        val1_metrics_values = dict()
+        val2_metrics_values = dict()
+        val_metrics_values = dict()
+
+        for name in self.val_metric_names:
+            val1_metrics_value = trainer.callback_metrics[f"val1_{name}_metric"].item()
+            val2_metrics_value = trainer.callback_metrics[f"val2_{name}_metric"].item()
+            val_metrics_value = trainer.callback_metrics[f"val_{name}_metric"].item()
+
+            val1_metrics_values[name] = val1_metrics_value
+            val2_metrics_values[name] = val2_metrics_value
+            val_metrics_values[name] = val_metrics_value
+
+        if trainer.is_global_zero:
+            current_epoch = pl_training_module.current_epoch - 1 # counting correction
+            global_step = pl_training_module.global_step
+            device = pl_training_module.device
+
+            train_loss_to_plot = pl_training_module.train_loss_to_plot
 
             training_spectra, val1_spectra, val2_spectra = self._get_predictions(
                 model=pl_training_module.model, 
@@ -256,50 +320,18 @@ class ModelResultsVisualizerCallback(Callback):
                 val2_spectra,
                 current_epoch,
                 global_step,
-                val_metric_names
+                self.val_metric_names
             )
-
-    def on_train_end(self, trainer, pl_training_module):
-        train_loss_value = trainer.callback_metrics["training_loss"].item()
-        current_epoch = pl_training_module.current_epoch
-        global_step = pl_training_module.global_step
-        train_loss_to_plot = pl_training_module.train_loss_to_plot
-        val1_metrics_to_plot = pl_training_module.val1_metrics_to_plot
-        val2_metrics_to_plot = pl_training_module.val2_metrics_to_plot
-        val_metrics_to_plot = pl_training_module.val_metrics_to_plot
-        val1_metrics_values = pl_training_module.val1_metrics_values
-        val2_metrics_values = pl_training_module.val2_metrics_values
-        val_metrics_values = pl_training_module.val_metrics_values
-        val_metric_names = pl_training_module.val_metric_names
-        device = pl_training_module.device
-
-        training_spectra, val1_spectra, val2_spectra = self._get_predictions(
-            model=pl_training_module.model, 
-            device=device, 
-            current_epoch=current_epoch, 
-            global_step=global_step
-        )
-        self._save_spectra_plots(
-            train_loss_value,
-            val1_metrics_values,
-            val2_metrics_values,
-            training_spectra,
-            val1_spectra,
-            val2_spectra,
-            current_epoch,
-            global_step,
-            val_metric_names
-        )
-        self._save_training_process_plots(
-            train_loss_to_plot,
-            val1_metrics_to_plot,
-            val2_metrics_to_plot,
-            val_metrics_to_plot,
-            train_loss_value,
-            val1_metrics_values,
-            val2_metrics_values,
-            val_metrics_values,
-            current_epoch,
-            global_step,
-            val_metric_names
-        )
+            self._save_training_process_plots(
+                train_loss_to_plot,
+                self.val1_metrics_to_plot,
+                self.val2_metrics_to_plot,
+                self.val_metrics_to_plot,
+                train_loss_value,
+                val1_metrics_values,
+                val2_metrics_values,
+                val_metrics_values,
+                current_epoch,
+                global_step,
+                self.val_metric_names
+            )
