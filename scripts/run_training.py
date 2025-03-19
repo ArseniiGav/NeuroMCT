@@ -305,8 +305,8 @@ def main():
         trainer = Trainer(
             max_epochs=100,
             accelerator=args.accelerator,
-            strategy="ddp",
-            devices=25,
+            strategy="ddp_spawn",
+            devices=50,
             precision="64",
             callbacks=[
                 checkpoint_callback,
