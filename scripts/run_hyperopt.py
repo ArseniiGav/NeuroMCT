@@ -94,6 +94,10 @@ def setup_data_and_paths(args, approach_type):
             f"{path_to_hopt_results}/seed_{args.seed}/trial_{run_index}/predictions", 
             exist_ok=True
         )
+        os.makedirs(
+            f"{path_to_hopt_results}/seed_{args.seed}/trial_{run_index}/values_to_plot", 
+            exist_ok=True
+        )
 
     # Set up model-specific configurations
     if approach_type == 'nfde':
@@ -514,6 +518,7 @@ def objective(trial, args, path_to_processed_data,
         base_path_to_savings=path_to_savings,
         plots_dir_name='plots',
         predictions_dir_name='predictions',
+        values_to_plot_dir_name='values_to_plot',
         val_metric_names=list(val_metric_functions.keys())
     )
 

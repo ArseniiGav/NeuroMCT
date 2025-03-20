@@ -77,6 +77,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     os.makedirs(f'{path_to_training_results}', exist_ok=True)
     os.makedirs(f'{path_to_training_results}/plots', exist_ok=True)
     os.makedirs(f'{path_to_training_results}/predictions', exist_ok=True)
+    os.makedirs(f'{path_to_training_results}/values_to_plot', exist_ok=True)
 
     # Set up metrics
     wasserstein_distance = LpNormDistance(p=1)  # Wasserstein distance
@@ -131,6 +132,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
         base_path_to_savings=path_to_training_results,
         plots_dir_name='plots',
         predictions_dir_name='predictions',
+        values_to_plot_dir_name='values_to_plot',
         val_metric_names=list(val_metric_functions.keys())
     )
 
