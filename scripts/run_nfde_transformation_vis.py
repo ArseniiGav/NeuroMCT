@@ -166,7 +166,8 @@ for i in range(3):
                 r"$f_{C}$"+f": {params_transformed[0][1]:.3f}, " + 
                 r"$Y$"+f": {params_transformed[0][2]:.0f} [1/MeV]", fontsize=14)
     fig.tight_layout()
-    fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/{dataset_type}_{i+1}_transformations.pdf")
+    fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/val2_{i+1}_transformations.pdf")
+    fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/val2_{i+1}_transformations.png")
     plt.close(fig)
 
 # Create a single plot with all val2 datasets together
@@ -224,6 +225,7 @@ ax.legend(handles=val2_lines, labels=val2_labels,
 
 fig.tight_layout()
 fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/val2_all_transformation.pdf")
+fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/val2_all_transformation.png")
 plt.close(fig)
 
 x_maxs = [1.5, 3.25, 5.5, 16.0, 16.0]
@@ -269,6 +271,7 @@ for i in range(3):
 
         fig.tight_layout()
         fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/norm_dir/{sources[j]}/val2_{i+1}_{sources[j]}_norm_dir.pdf")
+        fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/norm_dir/{sources[j]}/val2_{i+1}_{sources[j]}_norm_dir.png")
         plt.close(fig)
 
 # Create combined plots for each source showing all val2 datasets
@@ -399,6 +402,7 @@ for j in range(n_sources):
 
     fig.tight_layout()
     fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/norm_dir/{sources[j]}/val2_combined_{sources[j]}_norm_dir.pdf")
+    fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/norm_dir/{sources[j]}/val2_combined_{sources[j]}_norm_dir.png")
     plt.close(fig)
 
 # Create plots showing all sources together for each val2 dataset

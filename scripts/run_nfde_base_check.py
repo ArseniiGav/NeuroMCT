@@ -194,9 +194,10 @@ if args.dataset_type == 'val1':
         ax.set_ylim(0.0, 0.65)
         ax.legend(fontsize=12, loc="upper left")
         ax.set_xlabel("z", fontsize=16, color='black')
-        ax.set_ylabel("Density", fontsize=16, color='black')
+        ax.set_ylabel("Prob. density", fontsize=16, color='black')
         fig.tight_layout()
         fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.pdf")
+        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.png")
         plt.close(fig)
 
     # Combined sources plot
@@ -249,9 +250,10 @@ if args.dataset_type == 'val1':
     ax.set_ylim(0.0, 0.65)
     ax.legend(fontsize=12, loc="upper left")
     ax.set_xlabel("z", fontsize=16)
-    ax.set_ylabel("Density", fontsize=16, color='black')
+    ax.set_ylabel("Prob. density", fontsize=16, color='black')
     fig.tight_layout()
     fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.pdf")
+    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.png")
     plt.close(fig)
 
 elif args.dataset_type == 'val2':
@@ -341,9 +343,10 @@ elif args.dataset_type == 'val2':
             axs[k].set_ylim(0.0, 0.65)
             axs[k].legend(fontsize=12, loc="upper left")
             axs[k].set_xlabel("z", fontsize=16)
-        axs[0].set_ylabel("Density", fontsize=16, color='black')
+        axs[0].set_ylabel("Prob. density", fontsize=16, color='black')
         fig.tight_layout()
         fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.pdf")
+        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.png")
         plt.close(fig)
 
     # Combined sources plot for val2
@@ -377,7 +380,8 @@ elif args.dataset_type == 'val2':
         axs[k].set_ylim(0.0, 0.65)
         axs[k].legend(fontsize=12, loc="upper left")
         axs[k].set_xlabel("z", fontsize=16)
-    axs[0].set_ylabel("Density", fontsize=16, color='black')
+    axs[0].set_ylabel("Prob. density", fontsize=16, color='black')
     fig.tight_layout()
     fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.pdf")
+    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.png")
     plt.close(fig)
