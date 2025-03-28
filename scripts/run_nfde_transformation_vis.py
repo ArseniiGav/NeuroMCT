@@ -259,7 +259,7 @@ for i in range(3):
         plot_z_distribution(ax[2], 
             z_per_source_val2[i][j], 
             color=colors[j], 
-            label=f"NFDE's modeled $\hat{{z}}_{{V_{{2.{i+1}}}}}$"
+            label_z=f"NFDE's modeled $\hat{{z}}_{{V_{{2.{i+1}}}}}$"
         )
         
         fig.suptitle(
