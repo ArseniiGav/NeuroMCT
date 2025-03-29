@@ -77,8 +77,6 @@ def nfde_argparse():
                          help="The number of units in a flow's conditional network (default=20)")
     parser.add_argument("--flow_type", type=str, default="planar",
                          help='The type of the flows (default=planar)')
-    parser.add_argument("--dropout", type=float, default=0.0,
-                         help="The dropout prob. value in the Flow's networks (default=0.0)")
     parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
                         help='''The main validation metric used during the training
                                 (i.e., used for the early stopping condition). Can be val_*_metric, 

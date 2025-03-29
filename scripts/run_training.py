@@ -77,6 +77,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     os.makedirs(f'{path_to_training_results}', exist_ok=True)
     os.makedirs(f'{path_to_training_results}/plots', exist_ok=True)
     os.makedirs(f'{path_to_training_results}/predictions', exist_ok=True)
+    os.makedirs(f'{path_to_training_results}/values_to_plot', exist_ok=True)
 
     # Set up metrics
     wasserstein_distance = LpNormDistance(p=1)  # Wasserstein distance
@@ -119,7 +120,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     early_stopping_callback = EarlyStopping(
         monitor=monitor_metric, 
         mode="min", 
-        patience=200 if approach_type == 'tede' else 10
+        patience=200 if approach_type == 'tede' else 50
     )
 
     model_res_visualizator = res_visualizator_setup(
@@ -131,6 +132,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
         base_path_to_savings=path_to_training_results,
         plots_dir_name='plots',
         predictions_dir_name='predictions',
+        values_to_plot_dir_name='values_to_plot',
         val_metric_names=list(val_metric_functions.keys())
     )
 
@@ -286,7 +288,6 @@ def main():
             n_units=args.n_units,
             activation=args.activation_function,
             flow_type=args.flow_type,
-            dropout=args.dropout
         )
         
         model_lightning_training = NFDELightningTraining(
@@ -304,10 +305,10 @@ def main():
         )
         
         trainer = Trainer(
-            max_epochs=100,
+            max_epochs=300,
             accelerator=args.accelerator,
-            strategy="ddp",
-            devices=25,
+            strategy="ddp_spawn",
+            devices=50,
             precision="64",
             callbacks=[
                 checkpoint_callback,

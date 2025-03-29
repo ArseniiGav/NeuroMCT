@@ -12,6 +12,7 @@ class ModelResultsVisualizerCallback(Callback):
             base_path_to_savings: str,
             plots_dir_name: str,
             predictions_dir_name: str,
+            values_to_plot_dir_name: str,
             val_metric_names: str
         ):
         super().__init__()
@@ -19,6 +20,7 @@ class ModelResultsVisualizerCallback(Callback):
         self.approach_type = approach_type
         self.path_to_plot_savings = base_path_to_savings + "/" + plots_dir_name
         self.path_to_predictions_savings = base_path_to_savings + "/" + predictions_dir_name
+        self.path_to_values_to_plot_savings = base_path_to_savings + "/" + values_to_plot_dir_name
 
         self.plot_every_n_train_epochs = self.res_visualizer.plot_every_n_train_epochs
 
@@ -304,6 +306,10 @@ class ModelResultsVisualizerCallback(Callback):
             device = pl_training_module.device
 
             train_loss_to_plot = pl_training_module.train_loss_to_plot
+            torch.save(self.val1_metrics_to_plot, f'{self.path_to_values_to_plot_savings}/val1_metrics.pt')
+            torch.save(self.val2_metrics_to_plot, f'{self.path_to_values_to_plot_savings}/val2_metrics.pt')
+            torch.save(self.val_metrics_to_plot, f'{self.path_to_values_to_plot_savings}/val_metrics.pt')
+            torch.save(train_loss_to_plot, f'{self.path_to_values_to_plot_savings}/train_loss.pt')
 
             training_spectra, val1_spectra, val2_spectra = self._get_predictions(
                 model=pl_training_module.model, 

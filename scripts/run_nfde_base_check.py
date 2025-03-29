@@ -35,11 +35,14 @@ def compute_distance_metrics(z_bin_centers, gauss_x, z_pdf,
 
 def plot_distribution(ax, gauss_x, gauss_pdf, z_bin_edges, 
                       z_bin_centers, z_median, z_lb=None, z_ub=None, 
-                      color="black", label_base="", label_model=""):
+                      color="black", label_base="", label_model="", fill=False):
+    z_alpha = 0.3 if fill else 1.0
+    linestyle = '-' if fill else '--'
     ax.plot(gauss_x, gauss_pdf, color="black", 
             alpha=0.6, linewidth=1.75, label=label_base)
-    ax.stairs(z_median, z_bin_edges, color=color, 
-              alpha=1.0, linewidth=1.75, linestyle='--', label=label_model)
+    ax.stairs(z_median, z_bin_edges, color=color, fill=fill,
+              alpha=z_alpha, linewidth=1.75, linestyle=linestyle,
+              label=label_model)
     if z_lb is not None and z_ub is not None:
         ax.fill_between(z_bin_centers, z_lb, z_ub, fc=color, 
                         alpha=0.25, step='mid')
@@ -121,7 +124,7 @@ if args.dataset_type == 'val1':
     sts = sts.reshape(n_sources, -1, 1)
 
     z_per_source = []
-    for i in tqdm(range(n_sources), desc="Processing sources"):
+    for i in tqdm(range(n_sources), desc="Processing sources"): 
         z_per_param_set = []
         for j in tqdm(range(npes.shape[1]), desc="Processing param sets", leave=False):
             z_pdf = compute_z_pdf(npes[i][j], params[i][j], sts[i][j],
@@ -142,7 +145,7 @@ if args.dataset_type == 'val1':
 
     # Compute metrics per source
     cd_per_source, wd_per_source, ksd_per_source = [], [], []
-    for i in range(n_sources):
+    for i in range(n_sources): 
         cd, wd, ksd = compute_distance_metrics(z_bin_centers_rep, gauss_x_rep,
                                                z_per_source[i], gauss_pdf_rep,
                                                cramer_dist, wasserstein_dist, ks_dist)
@@ -167,7 +170,7 @@ if args.dataset_type == 'val1':
     ksd_lb = torch.quantile(ksd_per_source, q=0.025, dim=1)
 
     # Plot per-source distributions
-    for i in range(n_sources):
+    for i in range(n_sources): 
         metrics_text = "\n".join([
             format_metrics_text(wd_median[i], wd_lb[i], wd_ub[i], r"\overline{d}_{1}^{V_1}"),
             format_metrics_text(cd_median[i], cd_lb[i], cd_ub[i], r"\overline{d}_{2}^{V_1}"),
@@ -191,9 +194,10 @@ if args.dataset_type == 'val1':
         ax.set_ylim(0.0, 0.65)
         ax.legend(fontsize=12, loc="upper left")
         ax.set_xlabel("z", fontsize=16, color='black')
-        ax.set_ylabel("Density", fontsize=16, color='black')
+        ax.set_ylabel("Prob. density", fontsize=16, color='black')
         fig.tight_layout()
-        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.pdf")
+        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.pdf")
+        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.png")
         plt.close(fig)
 
     # Combined sources plot
@@ -246,9 +250,10 @@ if args.dataset_type == 'val1':
     ax.set_ylim(0.0, 0.65)
     ax.legend(fontsize=12, loc="upper left")
     ax.set_xlabel("z", fontsize=16)
-    ax.set_ylabel("Density", fontsize=16, color='black')
+    ax.set_ylabel("Prob. density", fontsize=16, color='black')
     fig.tight_layout()
-    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/{args.dataset_type}_all_sources_nfde_z_vs_true_base.pdf")
+    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.pdf")
+    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.png")
     plt.close(fig)
 
 elif args.dataset_type == 'val2':
@@ -305,7 +310,7 @@ elif args.dataset_type == 'val2':
     z_per_source_scomb = torch.mean(z_per_dataset, dim=1)
 
     # Plot distributions
-    for i in range(n_sources):
+    for i in range(n_sources): 
         fig, axs = plt.subplots(1, 3, figsize=(16, 5))
         for k in range(3):
             metrics_text = "\n".join([
@@ -324,7 +329,8 @@ elif args.dataset_type == 'val2':
                 None, None,
                 colors[i],
                 label_base="Base distribution $z$: $\mathcal{N}(0, 1)$",
-                label_model=f"NFDE's modeled $\hat{{z}}_{{V_{{2.{k+1}}}}}$"
+                label_model=f"NFDE's modeled $\hat{{z}}_{{V_{{2.{k+1}}}}}$",
+                fill=True
             )
 
             add_text_annotations(axs[k], 
@@ -337,9 +343,10 @@ elif args.dataset_type == 'val2':
             axs[k].set_ylim(0.0, 0.65)
             axs[k].legend(fontsize=12, loc="upper left")
             axs[k].set_xlabel("z", fontsize=16)
-        axs[0].set_ylabel("Density", fontsize=16, color='black')
+        axs[0].set_ylabel("Prob. density", fontsize=16, color='black')
         fig.tight_layout()
-        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.pdf")
+        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.pdf")
+        fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_{sources[i]}_nfde_z_vs_true_base.png")
         plt.close(fig)
 
     # Combined sources plot for val2
@@ -360,7 +367,8 @@ elif args.dataset_type == 'val2':
             None, None,
             "#3971ac",
             label_base="Base distribution $z$: $\mathcal{N}(0, 1)$",
-            label_model=f"NFDE's modeled $\hat{{z}}_{{V_{{2.{k+1}}}}}$"
+            label_model=f"NFDE's modeled $\hat{{z}}_{{V_{{2.{k+1}}}}}$",
+            fill=True
         )
         add_text_annotations(axs[k],
             "All sources combined",
@@ -372,7 +380,8 @@ elif args.dataset_type == 'val2':
         axs[k].set_ylim(0.0, 0.65)
         axs[k].legend(fontsize=12, loc="upper left")
         axs[k].set_xlabel("z", fontsize=16)
-    axs[0].set_ylabel("Density", fontsize=16, color='black')
+    axs[0].set_ylabel("Prob. density", fontsize=16, color='black')
     fig.tight_layout()
-    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/{args.dataset_type}_all_sources_nfde_z_vs_true_base.pdf")
+    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.pdf")
+    fig.savefig(f"{args.base_path_to_plots}/plots/nfde/base_check/{args.dataset_type}_all_sources_nfde_z_vs_true_base.png")
     plt.close(fig)

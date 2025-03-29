@@ -94,6 +94,10 @@ def setup_data_and_paths(args, approach_type):
             f"{path_to_hopt_results}/seed_{args.seed}/trial_{run_index}/predictions", 
             exist_ok=True
         )
+        os.makedirs(
+            f"{path_to_hopt_results}/seed_{args.seed}/trial_{run_index}/values_to_plot", 
+            exist_ok=True
+        )
 
     # Set up model-specific configurations
     if approach_type == 'nfde':
@@ -200,40 +204,26 @@ def get_nfde_search_space(trial):
         trial (optuna.Trial): Optuna trial object for suggesting parameters
 
     Returns:
-        dict: Dictionary containing hyperparameter configurations for NFDE, including:
+        dict: Dictionary containing hyperparameter configurations for NFDE, including tunable ones:
             - n_flows: Number of normalizing flows
             - n_units: Number of hidden units in each flow's neural network
             - activation_function: Activation function for the flow's parameter neural networks
-            - flow_type: Type of normalizing flow
-            - learning_rate: Initial learning rate
-            - optimizer: Optimizer type
             - lr_scheduler: Learning rate scheduler type
-            - dropout: Dropout rate
-            - batch_size: Training batch size
     """
     main_hparams = {
         'n_flows': trial.suggest_int(
-            'n_flows', 20, 200, step=5),
-        'n_units': trial.suggest_categorical(
-            'n_units', [5, 10, 20, 50]),
+            'n_flows', 100, 200, step=5),
+        'n_units': trial.suggest_int(
+            'n_units', 10, 50, step=5),
         'activation_function': trial.suggest_categorical(
             'activation_function', 
             ['relu', 'gelu', 'tanh', 'silu']),
-        'flow_type': trial.suggest_categorical(
-            'flow_type', ['planar', 'radial']),
-        'learning_rate': trial.suggest_float(
-            'learning_rate', 1e-6, 1e-3, log=True),
-        'optimizer': trial.suggest_categorical(
-            'optimizer', ['AdamW', 'RMSprop']),
         'lr_scheduler': trial.suggest_categorical(
             'lr_scheduler', 
-            ['ExponentialLR', 'ReduceLROnPlateau', 
-             'CosineAnnealingLR', 'None']),
-        'dropout': trial.suggest_float(
-            'dropout', 0.0, 0.25, step=0.01),
-        'batch_size': trial.suggest_int(
-            'batch_size', 1, 5, step=1),
+            ['ReduceLROnPlateau', 'CosineAnnealingLR']),
     }
+
+    main_hparams['batch_size'] = 1
     return main_hparams
 
 def get_tede_search_space(trial):
@@ -284,7 +274,7 @@ def get_tede_search_space(trial):
     }
     return main_hparams
 
-def get_optimizer_params(trial, main_hparams):
+def get_optimizer_params(trial, main_hparams, approach_type):
     """Get optimizer and learning rate scheduler parameters.
 
     Args:
@@ -316,13 +306,22 @@ def get_optimizer_params(trial, main_hparams):
         lr_scheduler = None
 
     # Optimizer parameters
-    main_hparams['weight_decay'] = trial.suggest_float(
-        'weight_decay', 1e-6, 1e-1, log=True)
-    if main_hparams['optimizer'] == 'RMSprop':
-        optimizer = optim.RMSprop
-        optimizer_hparams['alpha'] = trial.suggest_float(
-            'alpha', 0.9, 0.999, step=0.001)
-    elif main_hparams['optimizer'] == 'AdamW':
+    if approach_type == 'tede':
+        main_hparams['weight_decay'] = trial.suggest_float(
+            'weight_decay', 1e-6, 1e-1, log=True)
+        if main_hparams['optimizer'] == 'RMSprop':
+            optimizer = optim.RMSprop
+            optimizer_hparams['alpha'] = trial.suggest_float(
+                'alpha', 0.9, 0.999, step=0.001)
+        elif main_hparams['optimizer'] == 'AdamW':
+            optimizer = optim.AdamW
+            optimizer_hparams['beta1'] = trial.suggest_float(
+                'beta1', 0.5, 0.95, step=0.01)
+            optimizer_hparams['beta2'] = trial.suggest_float(
+                'beta2', 0.9, 0.999, step=0.001)
+    else:
+        main_hparams['learning_rate'] = 1e-4
+        main_hparams['weight_decay'] = 1e-4
         optimizer = optim.AdamW
         optimizer_hparams['beta1'] = trial.suggest_float(
             'beta1', 0.5, 0.95, step=0.01)
@@ -344,12 +343,10 @@ def get_initial_hparams(approach_type):
         return {
             'n_flows': 125,
             'n_units': 20,
-            'flow_type': "planar",
             'activation_function': 'silu',
             'learning_rate': 1e-4,
             'optimizer': 'AdamW',
             'lr_scheduler': 'ReduceLROnPlateau',
-            'dropout': 0.0,
             'batch_size': 1,
             'weight_decay': 1e-4,
             'reduction_factor': 0.9,
@@ -402,8 +399,7 @@ def create_model_and_training(approach_type, main_hparams, optimizer, lr_schedul
             n_sources=data_configs['n_sources'],
             n_units=main_hparams['n_units'],
             activation=main_hparams['activation_function'],
-            flow_type=main_hparams['flow_type'],
-            dropout=main_hparams['dropout']
+            flow_type="planar",
         )
         
         model_lightning_training = NFDELightningTraining(
@@ -481,7 +477,8 @@ def objective(trial, args, path_to_processed_data,
                    else get_tede_search_space(trial))
     
     # Get optimizer parameters
-    optimizer, lr_scheduler, optimizer_hparams = get_optimizer_params(trial, main_hparams)
+    optimizer, lr_scheduler, optimizer_hparams = get_optimizer_params(
+        trial, main_hparams, args.approach_type)
 
     # Set up metrics
     wasserstein_distance = LpNormDistance(p=1)
@@ -507,7 +504,7 @@ def objective(trial, args, path_to_processed_data,
     early_stopping_callback = EarlyStopping(
         monitor=args.monitor_metric, 
         mode="min", 
-        patience=200 if args.approach_type == 'tede' else 10
+        patience=200 if args.approach_type == 'tede' else 50
     )
 
     model_res_visualizator = res_visualizator_setup(
@@ -521,6 +518,7 @@ def objective(trial, args, path_to_processed_data,
         base_path_to_savings=path_to_savings,
         plots_dir_name='plots',
         predictions_dir_name='predictions',
+        values_to_plot_dir_name='values_to_plot',
         val_metric_names=list(val_metric_functions.keys())
     )
 
@@ -543,7 +541,7 @@ def objective(trial, args, path_to_processed_data,
 
     # Create trainer
     trainer = Trainer(
-        max_epochs=2000 if args.approach_type == 'tede' else 100,
+        max_epochs=2000 if args.approach_type == 'tede' else 300,
         accelerator=args.accelerator,
         strategy="ddp_spawn" if args.approach_type == 'nfde' else None,
         devices=50 if args.approach_type == 'nfde' else "auto",
@@ -674,7 +672,7 @@ def main():
         load_if_exists=True,
         sampler=TPESampler(seed=args.seed),
         pruner=HyperbandPruner(
-            min_resource=50 if args.approach_type == 'tede' else 10,
+            min_resource=50 if args.approach_type == 'tede' else 20,
             max_resource="auto",
             reduction_factor=3
         ),
