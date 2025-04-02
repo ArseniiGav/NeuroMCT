@@ -293,7 +293,7 @@ if __name__ == '__main__':
                         choices=('metropolis_hastings', 'ultranest', 'iminuit', 'FC',),
                         default='metropolis_hastings', help='What tools to use for fitting')
 
-    parser.add_argument('--model', nargs='+',
+    parser.add_argument('--model', type=str,
                         choices=('tede', 'nfde',),
                         default='tede', help='What model to use')
 
