@@ -92,7 +92,7 @@ class ModelTEDE:
 
 class ModelNFDE:
     def __init__(self, source, integral=None, device='cpu', path_to_models=None):
-        self._source_type = torch.tensor([source_to_number[source]], dtype=int64)
+        self._source_type = tensor([source_to_number[source]], dtype=int64)
         self._model = setup('nfde', device, path_to_models)
 
     def __call__(self, energy, pars):
@@ -154,7 +154,7 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
     # m.precision = 1e-7
     # m.print_level = 3
-    par_edges = [(0, 56), (0, 220), (0, 2506)] + [(0.9, 1.1)]*len(list(opts.sources))
+    par_edges = [(0, 1), (0, 1), (0, 1)] + [(0.9, 1.1)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
 
     # Set edges, make fit, unset edges, make fit
@@ -185,10 +185,10 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
         xdict[phys_name] = par.value
         errorsdict[phys_name] = par.error
 
-        a, fa, ok = m.mnprofile(m_name, subtract_min=True)
-        profiles_dict[phys_name]['x'] = a
-        profiles_dict[phys_name]['fcn'] = fa
-        profiles_dict[phys_name]['valid'] = ok
+        # a, fa, ok = m.mnprofile(m_name, subtract_min=True)
+        # profiles_dict[phys_name]['x'] = a
+        # profiles_dict[phys_name]['fcn'] = fa
+        # profiles_dict[phys_name]['valid'] = ok
         profiles_dict[phys_name]['merror'] = par.merror
         profiles_dict[phys_name]['merror_valid'] = m.merrors[m_name].is_valid
 
