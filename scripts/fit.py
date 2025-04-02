@@ -12,6 +12,7 @@ from scipy.linalg import solve_triangular
 
 from neuromct.configs import data_configs
 from neuromct.fit import SamplerMH, LogLikelihood, LogLikelihoodRatio, NegativeLogLikelihood
+from neuromct.fit import UnbinnedNegativeLogLikelihood, UnbinnedLogLikelihood
 from neuromct.models.ml import setup
 
 import os
@@ -70,14 +71,14 @@ def read_data(data_path, sources):
             data_dict[source_name] = data
     return data_dict
 
-class Model:
+class ModelTEDE:
     def __init__(self, source, integral,
-            bin_width=0.02, cholesky_cov=None, model_type='tede', device='cpu', path_to_models=None):
+            bin_width=0.02, cholesky_cov=None, device='cpu', path_to_models=None):
         self._source_n = source_to_number[source]
         self._integral = integral
         self._bin_width = bin_width
         self._cholesky_cov = cholesky_cov
-        self._model = setup(model_type, device, path_to_models)
+        self._model = setup('tede', device, path_to_models)
 
     def __call__(self, pars):
         kb, fc, ly, n = pars
@@ -88,6 +89,22 @@ class Model:
                 nl_pars, tensor([[self._source_n]], dtype=int64)
                 ).detach().numpy()[0] * self._integral * self._bin_width
         return n * out
+
+class ModelNFDE:
+    def __init__(self, source, integral=None, device='cpu', path_to_models=None):
+        self._source_type = torch.tensor([source_to_number[source]], dtype=int64)
+        self._model = setup('nfde', device, path_to_models)
+
+    def __call__(self, energy, pars):
+        kb, fc, ly = pars
+        nl_pars = tensor(pars, dtype=float64)
+
+        log_prob = self._model.log_prob(
+            x = energy,
+            params = nl_pars,
+            source_types = self._source_type,
+        )
+        return log_prob.flatten().detach().numpy()
 
 def cost_funs_sum_wrapper(cost_funs):
     def cost_funs_sum(pars):
@@ -214,7 +231,7 @@ def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov=None):
         pickle_dump(res_dict, file)
     return m
 
-def read_data_eos(common_eos_path, dataset, file_n, sources):
+def read_data_eos(common_eos_path, dataset, file_n, sources, model_type):
     edges = data_configs['kNPE_bins_edges']
     data_dict = dict()
     for source_name in sources:
@@ -223,25 +240,28 @@ def read_data_eos(common_eos_path, dataset, file_n, sources):
         print(rootpath)
         with open_root(rootpath) as rootfile:
             energy = 1.07 * rootfile['TRec']['m_NPE'].array() / 1000.
-            data, _ = np.histogram(energy, bins=edges)
+            if model_type == 'tede':
+                data, _ = np.histogram(energy, bins=edges)
+            else:
+                data = energy
             data_dict[source_name] = data
     return data_dict
 
 def main(opts):
     # data_dict = read_data(opts.data, opts.sources)
-    data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources)
-    cholesky_cov = None # np.load('average_cov_cholesky_decomposed.npy')
-
+    cholesky_cov=None
+    data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources, opts.model)
     log_likelihoods = list()
     chi2s = list()
+
+    Model = ModelTEDE if opts.model == 'tede' else ModelNFDE
+    LogLL = LogLikelihood if opts.model == 'tede' else UnbinnedLogLikelihood
+    NegativeLL = LogLikelihoodRatio if opts.model == 'tede' else UnbinnedNegativeLogLikelihood
     for source in opts.sources:
         data = data_dict[source]
-        model = Model(source, np.sum(data), model_type=opts.model, path_to_models=opts.model_path)
-        log_likelihoods.append(LogLikelihood(data, model))
-        if cholesky_cov is not None:
-            model = Model(source, np.sum(data),
-                          path_to_models=opts.model_path, cholesky_cov=cholesky_cov)
-        chi2s.append(LogLikelihoodRatio(data, model))
+        model = Model(source, np.sum(data), path_to_models=opts.model_path)
+        log_likelihoods.append(LogLL(data, model))
+        chi2s.append(NegativeLL(data, model))
     log_likelihood_sum = cost_funs_sum_wrapper(log_likelihoods)
     chi2_like = cost_funs_sum_wrapper(chi2s)
 
@@ -252,7 +272,6 @@ def main(opts):
     if 'iminuit' in opts.fit_tool:
         ls_pars_init = [0.5]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
         init_pars = list(ls_pars_init) + [1]*len(list(opts.sources))
-
         m = perform_minuit_fit(chi2_like, init_pars, opts, cholesky_cov)
     if 'FC' in opts.fit_tool:
         ls_pars_init = [0.5]*3 if cholesky_cov is None else list(solve_triangular(cholesky_cov, [0.5, 0.5, 0.5], lower=True))
