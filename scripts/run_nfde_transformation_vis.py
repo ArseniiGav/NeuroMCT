@@ -8,6 +8,8 @@ torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 from neuromct.configs import data_configs
 from neuromct.dataset import (
     load_processed_data,
@@ -493,7 +495,6 @@ for i in range(3):
         label_z = "NFDE's modeled $\hat{z}$" if j == 0 else ""
         ymax = 0.65 * 1.5 if j == 0 else 0.65
         ylabel = "Prob. density" if j == 2 else ""
-        legend = True if j == 0 else False
         text_y = 0.75 if j == 0 else 0.65
         yticks = [0.0, 0.4, 0.8] if j == 0 else [0.0, 0.4]
 
@@ -502,21 +503,25 @@ for i in range(3):
             color=colors[j], 
             label_z=label_z,
             label_gauss=label_gauss,
-            legend=legend,
+            legend=False,
             ylabel=ylabel,
             ymax=ymax,
-            legend_size=12.5,
             yticks_size=12,
             yticks=yticks
         )
-        
+
+        if j == 0:
+            custom_legend_patch = mpatches.Patch(facecolor="grey", edgecolor="grey", label=label_z, alpha=0.3)
+            custom_legend_line = mlines.Line2D([], [], color="black", label=label_gauss, linestyle='-', alpha=0.6)
+            z_axes[j].legend(handles=[custom_legend_line, custom_legend_patch], fontsize=12.5)
+
         # Add source name to each z distribution subplot
         z_axes[j].text(
-            0.15, text_y, sources_names_to_vis[j], 
+            0.05, text_y, sources_names_to_vis[j], 
             color="black",
             bbox=dict(boxstyle="round, pad=0.4", edgecolor="black", facecolor="white"),
             fontsize=13,
-            ha="center",
+            ha="left",
             va="center",
             transform=z_axes[j].transAxes
         )
