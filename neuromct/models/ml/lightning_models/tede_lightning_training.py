@@ -31,9 +31,6 @@ class TEDELightningTraining(LightningModule):
         self.monitor_metric = monitor_metric
         self.val_metric_names = list(val_metric_functions.keys())
 
-        self.val1_metrics_to_plot = {key: [] for key in self.val_metric_names}
-        self.val2_metrics_to_plot = {key: [] for key in self.val_metric_names}
-        self.val_metrics_to_plot = {key: [] for key in self.val_metric_names}
         self.train_loss_to_plot = []
 
     def _compute_and_log_losses(self, spectra_predict, spectra_true, data_type):
@@ -99,24 +96,37 @@ class TEDELightningTraining(LightningModule):
         self.train_loss_to_plot.append(loss.item())
         return loss
 
+    def on_validation_epoch_start(self):
+        self.val1_metrics_within_val_epoch = {
+            key: [] for key in self.val_metric_names}
+        self.val2_metrics_within_val_epoch = {
+            key: [] for key in self.val_metric_names}
+
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
+        dataset_type = "val1" if dataloader_idx == 0 else "val2"
         spectra_true, params, source_types = batch
         spectra_predict = self(params, source_types)
-        if dataloader_idx == 0:
-            self.val1_metrics_values = self._compute_and_log_val_metrics(
-                spectra_predict, spectra_true, "val1")
-            for name, value in self.val1_metrics_values.items():
-                self.val1_metrics_to_plot[name].append(value)
-        elif dataloader_idx == 1:
-            self.val2_metrics_values = self._compute_and_log_val_metrics(
-                spectra_predict, spectra_true, "val2")
-            for name, value in self.val2_metrics_values.items():
-                self.val2_metrics_to_plot[name].append(value)
+        
+        metrics_values = self._compute_and_log_val_metrics(
+            spectra_predict, spectra_true, dataset_type)
+        
+        if dataset_type == 'val1':
+            for name, value in metrics_values.items():
+                self.val1_metrics_within_val_epoch[name].append(value)
+        elif dataset_type == 'val2':
+            for name, value in metrics_values.items():
+                self.val2_metrics_within_val_epoch[name].append(value)
 
     def on_validation_epoch_end(self):
-        self.val_metrics_values = dict()
         for name in self.val_metric_names:
-            self.val_metrics_values[name] = (
-                self.val1_metrics_values[name] + self.val2_metrics_values[name]) / 2
-            self.log(f"val_{name}_metric", self.val_metrics_values[name], prog_bar=True)
-            self.val_metrics_to_plot[name].append(self.val_metrics_values[name])
+            val1_metrics_value = torch.mean(
+                torch.tensor(self.val1_metrics_within_val_epoch[name])
+            ).item()
+            val2_metrics_value = torch.mean(
+                torch.tensor(self.val2_metrics_within_val_epoch[name])
+            ).item()
+            val_metrics_value = (val1_metrics_value + val2_metrics_value) / 2
+
+            self.log(f"val1_{name}_metric", val1_metrics_value, prog_bar=True)
+            self.log(f"val2_{name}_metric", val2_metrics_value, prog_bar=True)
+            self.log(f"val_{name}_metric", val_metrics_value, prog_bar=True)

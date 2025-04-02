@@ -127,5 +127,5 @@ dmypy.json
 # my files
 notebooks/
 lightning_logs/
-plots
-restart_training.py
+plots/
+models/backup/
