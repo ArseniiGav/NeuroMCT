@@ -4,7 +4,7 @@ from lzma import open as lzma_open
 from iminuit import Minuit
 from pickle import dump as pickle_dump
 from pickle import load as pickle_load
-from torch import tensor, int32, float32, set_num_threads, set_num_interop_threads
+from torch import tensor, int32, float32, int64, float64, set_num_threads, set_num_interop_threads
 from ultranest import ReactiveNestedSampler
 from uproot import open as open_root
 import numpy as np
@@ -83,9 +83,9 @@ class Model:
         kb, fc, ly, n = pars
         if self._cholesky_cov is not None:
             kb, fc, ly = self._cholesky_cov @ [kb, fc, ly]
-        nl_pars = tensor([kb, fc, ly], dtype=float32).unsqueeze(0)
+        nl_pars = tensor([kb, fc, ly], dtype=float64).unsqueeze(0)
         out = self._model(
-                nl_pars, tensor([[self._source_n]], dtype=int32)
+                nl_pars, tensor([[self._source_n]], dtype=int64)
                 ).detach().numpy()[0] * self._integral * self._bin_width
         return n * out
 
@@ -109,7 +109,7 @@ def perform_mh_fit(log_likelihood_fn, opts):
     sampler = SamplerMH(log_likelihood_fn, initial_pos, cov, par_names, rng)
     sampler.estimate_covariance(10, 1000, 10000)
     sampler.sample(opts.n_samples)
-    outname = f"mcmc-mh-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
+    outname = f"{opts.model}-mh-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     sampler.save(opts.output, outname, metadata=vars(opts))
     return sampler
 
@@ -128,14 +128,14 @@ def perform_ultranest_fit(log_likelihood_fn, opts):
             show_status=False,
             )
     # result['metadata'] = vars(opts)
-    outname = f"ultranest-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
+    outname = f"{opts.model}-ultranest-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
         pickle_dump(result, file)
     return result
 
 def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
-    m.precision = 1e-7
+    # m.precision = 1e-7
     # m.print_level = 3
     par_edges = [(0, 56), (0, 220), (0, 2506)] + [(0.9, 1.1)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
@@ -179,14 +179,14 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
     result['errorsdict'] = errorsdict
     result['profiles_dict'] = profiles_dict
 
-    outname = f"iminuit-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
+    outname = f"{opts.model}-iminuit-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
         pickle_dump(result, file)
     return m
 
 def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
-    m.precision = 1e-7
+    # m.precision = 1e-7
     par_edges = [(0, 56), (0, 220), (0, 2506)] # + [(0.7, 1.3)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
     if par_edges:
@@ -209,7 +209,7 @@ def perform_fc_fit(chi2, par_init, par_true, opts, cholesky_cov=None):
             m.values[p] = res_best[-1][p]
         # res_true = (m.valid, m.fmin.fval, m.values.to_dict())
 
-    outname = f"FC-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
+    outname = f"{opts.model}-FC-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     with lzma_open(f'{opts.output}/{outname}.xz', 'wb') as file:
         pickle_dump(res_dict, file)
     return m
@@ -236,7 +236,7 @@ def main(opts):
     chi2s = list()
     for source in opts.sources:
         data = data_dict[source]
-        model = Model(source, np.sum(data), path_to_models=opts.model_path)
+        model = Model(source, np.sum(data), model_type=opts.model, path_to_models=opts.model_path)
         log_likelihoods.append(LogLikelihood(data, model))
         if cholesky_cov is not None:
             model = Model(source, np.sum(data),
@@ -266,13 +266,17 @@ def main(opts):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--n-samples', type=int, default=100000, help='Number of samples to produce')
+    parser.add_argument('--n-samples', type=int, default=300000, help='Number of samples to produce')
     parser.add_argument('--sources', required=True,
                         choices=sources_all,
                         nargs='+', help='Which sources to use')
     parser.add_argument('--fit-tool', nargs='+',
                         choices=('metropolis_hastings', 'ultranest', 'iminuit', 'FC',),
                         default='metropolis_hastings', help='What tools to use for fitting')
+
+    parser.add_argument('--model', nargs='+',
+                        choices=('tede', 'nfde',),
+                        default='tede', help='What model to use')
 
     parser.add_argument('-d', '--data', default='./data', help='Path to find input data files')
     parser.add_argument('--common-eos-path',

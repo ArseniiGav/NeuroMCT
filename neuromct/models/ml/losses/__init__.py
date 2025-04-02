@@ -1,1 +1,5 @@
-from .losses import CosineDistanceLoss, GeneralizedPoissonNLLLoss, GeneralizedKLDivLoss
+from .losses import (
+    CosineDistanceLoss, 
+    GeneralizedPoissonNLLLoss, 
+    GeneralizedKLDivLoss
+)

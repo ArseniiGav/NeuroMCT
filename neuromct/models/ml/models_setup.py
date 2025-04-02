@@ -45,7 +45,6 @@ def setup(model_type, device, base_path_to_models=None):
             n_units=args.n_units,
             activation=args.activation_function,
             flow_type=args.flow_type,
-            base_type=args.base_type
         ).double().to(device)
 
         nfde_model.load_state_dict(

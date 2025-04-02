@@ -1,6 +1,7 @@
 def matplotlib_setup(tick_labelsize=16, axes_labelsize=18, legend_fontsize=14):
     import seaborn as sns 
     import matplotlib as mpl
+    mpl.use('Agg')
 
     sns.set_theme(style = 'white')
     mpl.rc('xtick.minor', visible=True) 
