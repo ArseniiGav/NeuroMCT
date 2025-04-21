@@ -120,7 +120,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     early_stopping_callback = EarlyStopping(
         monitor=monitor_metric, 
         mode="min", 
-        patience=200 if approach_type == 'tede' else 50
+        patience=250 if approach_type == 'tede' else 100
     )
 
     model_res_visualizator = res_visualizator_setup(
@@ -305,7 +305,7 @@ def main():
         )
         
         trainer = Trainer(
-            max_epochs=300,
+            max_epochs=2000,
             accelerator=args.accelerator,
             strategy="ddp_spawn",
             devices=50,

@@ -6,7 +6,7 @@
     "num_encoder_layers": 3,
     "dim_feedforward": 352,
     "activation_function": "gelu",
-    "learning_rate": 0.0022181871522130845,
+    "learning_rate": 5e-4,
     "optimizer": "AdamW",
     "lr_scheduler": "CosineAnnealingLR",
     "dropout": 0.4,
