@@ -4,22 +4,20 @@ from scipy.stats import poisson
 
 class LogLikelihood:
     def __init__(self, data, model):
-        self._offset = 1
-        self._data = np.array(data) + self._offset
+        self._data = np.array(data)
         self._model = model
 
     def __call__(self, pars):
-        lmbd = self._model(pars) + self._offset
+        lmbd = self._model(pars)
         return np.sum(self._data * np.log(lmbd) - lmbd)
 
 class NegativeLogLikelihood:
     def __init__(self, data, model):
-        self._offset = 1
-        self._data = np.array(data) + self._offset
+        self._data = np.array(data)
         self._model = model
 
     def __call__(self, pars):
-        lmbd = self._model(pars) + self._offset
+        lmbd = self._model(pars)
         return -2 * np.sum(self._data * np.log(lmbd) - lmbd)
 
 class UnbinnedNegativeLogLikelihood:
@@ -54,12 +52,11 @@ class UnbinnedLogLikelihood:
 
 class LogLikelihoodRatio:
     def __init__(self, data, model):
-        self._offset = 1
-        self._data = np.array(data) + self._offset
+        self._data = np.array(data)
         self._model = model
 
     def __call__(self, pars):
-        lmbd = self._model(pars) + self._offset
+        lmbd = self._model(pars)
         mask = (self._data == 0)
         if np.any(mask):
             ln = np.zeros(len(self._data))
