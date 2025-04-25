@@ -429,7 +429,7 @@ def main():
     # Save the best model
     torch.save(
         best_model.model.state_dict(),
-        f"{base_path_to_models}/models/{approach_type}_model_check.pth"
+        f"{base_path_to_models}/models/{approach_type}_model.pth"
     )
 
 if __name__ == "__main__":
