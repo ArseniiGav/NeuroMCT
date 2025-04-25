@@ -120,7 +120,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     early_stopping_callback = EarlyStopping(
         monitor=monitor_metric, 
         mode="min", 
-        patience=200 if approach_type == 'tede' else 100
+        patience=250 if approach_type == 'tede' else 100
     )
 
     model_res_visualizator = res_visualizator_setup(
@@ -429,7 +429,7 @@ def main():
     # Save the best model
     torch.save(
         best_model.model.state_dict(),
-        f"{base_path_to_models}/models/{approach_type}_model.pth"
+        f"{base_path_to_models}/models/{approach_type}_model_check.pth"
     )
 
 if __name__ == "__main__":
