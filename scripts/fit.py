@@ -90,6 +90,29 @@ class ModelTEDE:
                 ).detach().numpy()[0] * self._integral * self._bin_width
         return n * out
 
+class BinnedNFDE:
+    def __init__(self, source, integral=None, device='cpu', path_to_models=None):
+        self._source_type = tensor([source_to_number[source]], dtype=int64)
+        self._integral = integral
+        self._model = setup('nfde', device, path_to_models)
+
+        edges = data_configs['kNPE_bins_edges']
+        centers = (edges[:-1] + edges[1:]) / 2
+        self._centers = tensor(np.array(centers), dtype=float64)
+
+    def __call__(self, pars):
+        kb, fc, ly, n = pars
+        nl_pars = tensor([kb, fc, ly], dtype=float64)
+
+        log_prob = self._model.log_prob(
+            x = self._centers,
+            params = nl_pars,
+            source_types = self._source_type,
+        ).flatten().detach().numpy()
+        prob = np.exp(log_prob)
+        out = prob / np.sum(prob) * self._integral
+        return n * out
+
 class ModelNFDE:
     def __init__(self, source, integral=None, device='cpu', path_to_models=None):
         self._source_type = tensor([source_to_number[source]], dtype=int64)
@@ -154,7 +177,7 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
     m = Minuit(chi2, par_init)
     # m.precision = 1e-7
     # m.print_level = 3
-    par_edges = [(0, 1), (0, 1), (0, 1)] + [(0.9, 1.1)]*len(list(opts.sources))
+    par_edges = [(0, 1), (0, 1), (0, 1)] + [(0.8, 1.2)]*len(list(opts.sources))
     par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
 
     # Set edges, make fit, unset edges, make fit
@@ -180,7 +203,7 @@ def perform_minuit_fit(chi2, par_init, opts, cholesky_cov=None):
         result['cholesky_cov'] = cholesky_cov
 
     xdict, errorsdict, profiles_dict = dict(), dict(), defaultdict(dict)
-    for m_name, phys_name in zip(m.parameters[:3], par_names):
+    for m_name, phys_name in zip(m.parameters, par_names):
         par = m.params[m_name]
         xdict[phys_name] = par.value
         errorsdict[phys_name] = par.error
@@ -240,23 +263,39 @@ def read_data_eos(common_eos_path, dataset, file_n, sources, model_type):
         print(rootpath)
         with open_root(rootpath) as rootfile:
             energy = 1.07 * rootfile['TRec']['m_NPE'].array() / 1000.
-            if model_type == 'tede':
+            if model_type == 'binned':
                 data, _ = np.histogram(energy, bins=edges)
-            else:
+            elif model_type == 'unbinned':
                 data = energy
+            else:
+                raise Exception(f"model_type has to be 'binned' or 'unbinned' but got {model_type} instead")
             data_dict[source_name] = data
     return data_dict
 
 def main(opts):
-    # data_dict = read_data(opts.data, opts.sources)
+    if opts.model == 'tede':
+        Model = ModelTEDE
+        LogLL = LogLikelihood
+        NegativeLL = LogLikelihoodRatio
+        model_type = 'binned'
+    elif opts.model == 'nfde':
+        Model = ModelNFDE
+        LogLL = UnbinnedLogLikelihood
+        NegativeLL = UnbinnedNegativeLogLikelihood
+        model_type = 'unbinned'
+    elif opts.model == 'nfde_binned':
+        Model = BinnedNFDE
+        LogLL = LogLikelihood
+        NegativeLL = LogLikelihoodRatio
+        model_type = 'binned'
+    else:
+        raise Exception(f'Unknown model {opts.model}')
+
+    data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources, model_type)
     cholesky_cov=None
-    data_dict = read_data_eos(opts.common_eos_path, opts.dataset, opts.file_number, opts.sources, opts.model)
     log_likelihoods = list()
     chi2s = list()
 
-    Model = ModelTEDE if opts.model == 'tede' else ModelNFDE
-    LogLL = LogLikelihood if opts.model == 'tede' else UnbinnedLogLikelihood
-    NegativeLL = LogLikelihoodRatio if opts.model == 'tede' else UnbinnedNegativeLogLikelihood
     for source in opts.sources:
         data = data_dict[source]
         model = Model(source, np.sum(data), path_to_models=opts.model_path)
@@ -294,7 +333,7 @@ if __name__ == '__main__':
                         default='metropolis_hastings', help='What tools to use for fitting')
 
     parser.add_argument('--model', type=str,
-                        choices=('tede', 'nfde',),
+                        choices=('tede', 'nfde', 'nfde_binned'),
                         default='tede', help='What model to use')
 
     parser.add_argument('-d', '--data', default='./data', help='Path to find input data files')
