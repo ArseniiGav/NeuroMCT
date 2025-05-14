@@ -5,10 +5,10 @@ models. It uses Optuna for hyperparameter optimization and PyTorch Lightning for
 
 Example usage:
     # For NFDE optimization
-    python run_hyperopt.py --approach_type nfde --n_trials 100 --accelerator cpu --seed 22
+    python3 scripts/run_hyperopt.py --approach_type nfde --n_trials 100 --accelerator cpu --seed 22
 
     # For TEDE optimization
-    python run_hyperopt.py --approach_type tede --n_trials 250 --accelerator gpu --seed 222
+    python3 scripts/run_hyperopt.py --approach_type tede --n_trials 250 --accelerator gpu --seed 222
 
 The script saves all trial results, best parameters, and model states in the specified output directories.
 """
