@@ -548,7 +548,7 @@ def objective(trial, args, path_to_processed_data,
     trainer = Trainer(
         max_epochs=2000 if args.approach_type == 'tede' else 300,
         accelerator=args.accelerator,
-        strategy="ddp_spawn" if args.approach_type == 'nfde' else None,
+        strategy="ddp_spawn" if args.approach_type == 'nfde' else "auto",
         devices=50 if args.approach_type == 'nfde' else "auto",
         precision="64",
         callbacks=[
