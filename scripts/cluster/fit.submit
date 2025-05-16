@@ -1,0 +1,59 @@
+# executable that will be launched for each task
+executable = fit_wrapper.sh
+# Set group as JUNO. Needed to proper resources accounting
+accounting_group = juno
+# arguments passed to executable, e.g fit_avg_spectra_to_tdp.sh $(seed) $(relunc)
+# $(...) denotes HTCondor variables,
+# these here come from queue command in the end of submit file
+arguments = $(args)
+
+# Path to Singularity image.
+# HTCondor will spawn container and launch task inside it.
++SingularityImage = "/cvmfs/containers.jinr.ru/dmitryd/neuro-mct-docker/neuro_mct:latest"
+# Run tasks only on host that has Singularity support
+Requirements = HasSingularity
+
+# whether to transfer files to working nodes or no
+should_transfer_files = yes
+# set output files and logs to be transfered only at task exit or after it is evicted from working node
+transfer_output_files = ""
+when_to_transfer_output = on_exit_or_evict
+
+# $ENV(...) allows to reference variables in environment.
+# Here it is a name of our Proxy Certificate
+use_x509userproxy  = True
+x509userproxy = $ENV(PROXY_CERT)
+
+# tell HTCondor to transfer file with fit script
+transfer_input_files = ../fit.py
+
+# set environment variables for task at working node
+environment = "STORAGE_URL=root://juno-se-dr02.jinr.ru:1094 MPLCONFIGDIR=/mnt/mpl"
+
+# don't run as task as your user, Singularity failed to run without it
+RunAsOwner = False
+
+# request at least 1.5 GB of disk, 4 GB of RAM and 1 CPU to launch individual task
+Request_Disk = 1GB
+Request_Memory = 2GB
+Request_cpus = 1
+
+# if task fails for some reason, try to relaunch max retries times
+max_retries = 2
+
+# Materialize maximum 50 jobs
+materialize_max_idle = 50
+
+# Location on SUBMIT machine for logs and files with
+# output and error streams for each task.
+# $(ClusterId) -- unique ID for a submitted set of jobs,
+# $(ProcID) -- unique ID for a given job inside the set/cluster of jobs
+# NOTE: you must create logs folder before submitting jobs!
+
+log = logs/log.$(ClusterId).$(ProcId)
+output = logs/out.$(ClusterId).$(ProcId)
+error = logs/err.$(ClusterId).$(ProcId)
+
+# queue command actually submits tasks for execution.
+# In this example the arguments for seed and relunc for each task are red from text file commands_by_periods
+queue args from ./args/args_nfde_mh.txt
