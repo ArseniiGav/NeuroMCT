@@ -140,14 +140,37 @@ def cost_funs_sum_wrapper(cost_funs):
     return cost_funs_sum
 
 def perform_mh_fit(log_likelihood_fn, opts):
+
+    def prior_fn(positions):
+        for i, x in enumerate(positions):
+            if i < 3 and (x < 0 or x > 1):
+                return -np.inf
+            else if i >= 3 and (x < 0.8 or x > 1.2):
+                return -np.inf
+        return 0
+
+    par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
     n_sources = len(opts.sources)
     initial_pos = [0.5, 0.5, 0.5] + [1] * n_sources
-    cov = np.diag([1e-5, 1e-5, 1e-5] + [5e-5] * n_sources)
     rng = np.random.default_rng(opts.seed)
-    par_names = ['kb', 'fc', 'ly'] + list(opts.sources)
 
-    sampler = SamplerMH(log_likelihood_fn, initial_pos, cov, par_names, rng)
-    sampler.estimate_covariance(10, 1000, 10000)
+    nl_pars_cov = np.array([
+        [ 1.11834200e-04, -1.48694024e-04,  3.24681415e-05,],
+        [-1.48694024e-04,  2.42690654e-04, -4.70770206e-05,],
+        [ 3.24681415e-05, -4.70770206e-05,  9.87534177e-06,],
+        ])
+    full_cov = np.zeros((3+n_sources, 3+n_sources))
+    full_cov[:3, :3] = nl_pars_cov
+    full_cov[3:, 3:] = np.diag([2.8e-5]*n_sources)
+
+
+    sampler = SamplerMH(cost_fn=log_likelihood_fn,
+                        prior_fn=prior_fn,
+                        initial_pos=initial_pos,
+                        cov=full_cov,
+                        par_names=par_names,
+                        rng=rng)
+    sampler.sample(15000) # just to more or less converge
     sampler.sample(opts.n_samples)
     outname = f"{opts.model}-mh-{'-'.join(opts.sources)}-{opts.dataset}-{opts.file_number}"
     sampler.save(opts.output, outname, metadata=vars(opts))
@@ -324,7 +347,7 @@ def main(opts):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--n-samples', type=int, default=300000, help='Number of samples to produce')
+    parser.add_argument('--n-samples', type=int, default=100000, help='Number of samples to produce')
     parser.add_argument('--sources', required=True,
                         choices=sources_all,
                         nargs='+', help='Which sources to use')
