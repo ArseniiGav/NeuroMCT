@@ -10,6 +10,10 @@ def tede_argparse():
                          help="The path to the JSON config file")
     parser.add_argument("--n_sources", type=int, default=5,
                          help='The number of calibration sources (default=5).')
+    parser.add_argument("--params_dim", type=int, default=3,
+                         help='Number of input LS parameters (default=3)')
+    parser.add_argument("--n_tokens_per_param", type=int, default=1,
+                         help='Number of tokens per input LS parameter (default=1)')
     parser.add_argument("--batch_size", type=int, default=32,
                          help='The batch size (default=32).')
     parser.add_argument("--learning_rate", type=float, default=5e-4,

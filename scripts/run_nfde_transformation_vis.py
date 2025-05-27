@@ -164,9 +164,9 @@ for i in range(3):
             sources_names_to_vis[j]
         )
     params_transformed = scaler.inverse_transform(params_list[i])
-    ax.set_title(r"$k_{B}$"+f": {params_transformed[0][0]:.2f} [g/cm2/GeV], " + 
+    ax.set_title(r"$k_{B}$"+f": {params_transformed[0][0]:.2f} [" + r"$\rm{g \cdot cm^{-2}} \cdot \rm{GeV^{-1}}$" + "], " + 
                 r"$f_{C}$"+f": {params_transformed[0][1]:.3f}, " + 
-                r"$Y$"+f": {params_transformed[0][2]:.0f} [1/MeV]", fontsize=14)
+                r"$Y$"+f": {params_transformed[0][2]:.0f} [" + r"$\rm{MeV^{-1}}$" + "]", fontsize=14)
     fig.tight_layout()
     fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/val2_{i+1}_transformations.pdf")
     fig.savefig(f"{base_path_to_plots}/plots/nfde/transform_vis/transforms_only/val2_{i+1}_transformations.png")
@@ -265,10 +265,10 @@ for i in range(3):
         )
         
         fig.suptitle(
-            f"Val. dataset №2.{i+1}: " + 
-            r"$k_{B}$"+f": {params_transformed[0][0]:.2f} [g/cm2/GeV], " + 
+            f"Val. dataset 2.{i+1}: " + 
+            r"$k_{B}$"+f": {params_transformed[0][0]:.2f} [" + r"$\rm{g \cdot cm^{-2}} \cdot \rm{GeV^{-1}}$" + "], " + 
             r"$f_{C}$"+f": {params_transformed[0][1]:.3f}, " + 
-            r"$Y$"+f": {params_transformed[0][2]:.0f} [1/MeV]", y=0.95,fontsize=18
+            r"$Y$"+f": {params_transformed[0][2]:.0f} [" + r"$\rm{MeV^{-1}}$" + "]", y=0.95,fontsize=18
         )
 
         fig.tight_layout()
@@ -529,10 +529,10 @@ for i in range(3):
     # Add parameter information as overall title
     params_transformed = scaler.inverse_transform(params_list[i])
     fig.suptitle(
-        f"Val. dataset №2.{i+1}: " + 
-        r"$k_{B}$"+f": {params_transformed[0][0]:.2f} [g/cm2/GeV], " + 
+        f"Val. dataset 2.{i+1}: " + 
+        r"$k_{B}$"+f": {params_transformed[0][0]:.2f} [" + r"$\rm{g \cdot cm^{-2}} \cdot \rm{GeV^{-1}}$" + "], " + 
         r"$f_{C}$"+f": {params_transformed[0][1]:.3f}, " + 
-        r"$Y$"+f": {params_transformed[0][2]:.0f} [1/MeV]", y=0.95, fontsize=20
+        r"$Y$"+f": {params_transformed[0][2]:.0f} [" + r"$\rm{MeV^{-1}}$" + "]", y=0.95, fontsize=20
     )
 
     fig.tight_layout()
