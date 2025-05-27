@@ -85,7 +85,7 @@ def setup_data_and_paths(args, approach_type):
 
     # Create directories for trials
     os.makedirs(f'{path_to_hopt_results}/seed_{args.seed}', exist_ok=True)
-    for run_index in range(args.n_trials):
+    for run_index in range(args.n_trials+1):
         os.makedirs(
             f"{path_to_hopt_results}/seed_{args.seed}/trial_{run_index}/plots", 
             exist_ok=True
