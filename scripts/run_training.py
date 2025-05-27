@@ -322,9 +322,11 @@ def main():
     else:  # tede
         model = TEDE(
             n_sources=args.n_sources,
+            params_dim=args.params_dim,
             output_dim=args.output_dim,
             d_model=args.d_model,
             activation=args.activation_function,
+            n_tokens_per_param=args.n_tokens_per_param,
             nhead=args.nhead,
             num_encoder_layers=args.num_encoder_layers,
             dim_feedforward=args.dim_feedforward,

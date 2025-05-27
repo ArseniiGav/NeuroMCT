@@ -13,17 +13,28 @@ class CosineDistanceLoss(nn.Module):
 
 
 class GeneralizedPoissonNLLLoss(nn.Module):
-    def __init__(self, log=False):
+    def __init__(self, log_input, log_target, reduction):
+        """
+        Generalized Poisson Negative Log Likelihood Loss.
+        Args:
+            log_input (bool): If True, y_pred is expected to be in log-space.
+            log_target (bool): If True, y_true is expected to be in log-space 
+                               (not supported by nn.PoissonNLLLoss, so will be converted).
+            reduction (str): Specifies the reduction to apply to the output.
+                             Options: 'sum', 'mean', or 'none'.
+        """
         super(GeneralizedPoissonNLLLoss, self).__init__()
-        self.log = log
-    
+        self.log_input = log_input
+        self.log_target = log_target
+        self.poisson_nll = nn.PoissonNLLLoss(
+            log_input=True, reduction=reduction)
+
     def forward(self, y_pred, y_true):
-        if self.log:
-            output = torch.exp(y_pred) - 1 - (torch.exp(y_true) - 1) * (torch.log(torch.exp(y_pred) - 1))
-            output = output.mean()
-        else:
-            output = nn.PoissonNLLLoss(log_input=False)
-        return output
+        if not self.log_input:
+            y_pred = torch.log(y_pred)
+        if self.log_target:
+            y_true = torch.exp(y_true)
+        return self.poisson_nll(y_pred, y_true)
 
 
 class GeneralizedKLDivLoss(nn.Module):
@@ -36,7 +47,8 @@ class GeneralizedKLDivLoss(nn.Module):
         """
         super(GeneralizedKLDivLoss, self).__init__()
         self.log_input = log_input
-        self.kl_div = nn.KLDivLoss(reduction=reduction, log_target=log_target)
+        self.kl_div = nn.KLDivLoss(
+            reduction=reduction, log_target=log_target)
 
     def forward(self, predicted, target):
         """

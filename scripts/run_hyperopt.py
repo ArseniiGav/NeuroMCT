@@ -5,10 +5,10 @@ models. It uses Optuna for hyperparameter optimization and PyTorch Lightning for
 
 Example usage:
     # For NFDE optimization
-    python run_hyperopt.py --approach_type nfde --n_trials 100 --accelerator cpu --seed 22
+    python3 scripts/run_hyperopt.py --approach_type nfde --n_trials 100 --accelerator cpu --seed 22
 
     # For TEDE optimization
-    python run_hyperopt.py --approach_type tede --n_trials 250 --accelerator gpu --seed 222
+    python3 scripts/run_hyperopt.py --approach_type tede --n_trials 250 --accelerator gpu --seed 222
 
 The script saves all trial results, best parameters, and model states in the specified output directories.
 """
@@ -85,7 +85,7 @@ def setup_data_and_paths(args, approach_type):
 
     # Create directories for trials
     os.makedirs(f'{path_to_hopt_results}/seed_{args.seed}', exist_ok=True)
-    for run_index in range(args.n_trials):
+    for run_index in range(args.n_trials+1):
         os.makedirs(
             f"{path_to_hopt_results}/seed_{args.seed}/trial_{run_index}/plots", 
             exist_ok=True
@@ -247,6 +247,8 @@ def get_tede_search_space(trial):
             - batch_size: Training batch size
     """
     main_hparams = {
+        'n_tokens_per_param': trial.suggest_int(
+            'n_tokens_per_param', 1, 5, step=1),
         'd_model': trial.suggest_int(
             'd_model', 50, 500, step=50),
         'nhead': trial.suggest_categorical(
@@ -356,20 +358,21 @@ def get_initial_hparams(approach_type):
     else:  # tede
         return {
             'd_model': 100,
-            'nhead': 5,
-            'num_encoder_layers': 4,
-            'dim_feedforward': 128,
+            'nhead': 10,
+            'num_encoder_layers': 3,
+            'dim_feedforward': 256,
             'activation_function': 'relu',
-            'learning_rate': 1e-4,
+            'n_tokens_per_param': 1,
+            'learning_rate': 5e-4,
             'optimizer': 'AdamW',
             'lr_scheduler': 'CosineAnnealingLR',
             'dropout': 0.1,
-            'temperature': 2.0,
-            'batch_size': 32,
-            'weight_decay': 1e-4,
+            'temperature': 1.5,
+            'batch_size': 128,
+            'weight_decay': 5e-5,
             'T_max': 50,
             'beta1': 0.9,
-            'beta2': 0.99,
+            'beta2': 0.999,
         }
 
 def create_model_and_training(approach_type, main_hparams, optimizer, lr_scheduler, 
@@ -418,9 +421,11 @@ def create_model_and_training(approach_type, main_hparams, optimizer, lr_schedul
     else:  # tede
         model = TEDE(
             n_sources=data_configs['n_sources'],
+            params_dim=data_configs['params_dim'],
             output_dim=data_configs['n_bins'],
             d_model=main_hparams['d_model'],
             activation=main_hparams['activation_function'],
+            n_tokens_per_param=main_hparams['n_tokens_per_param'],
             nhead=main_hparams['nhead'],
             num_encoder_layers=main_hparams['num_encoder_layers'],
             dim_feedforward=main_hparams['dim_feedforward'],
@@ -543,7 +548,7 @@ def objective(trial, args, path_to_processed_data,
     trainer = Trainer(
         max_epochs=2000 if args.approach_type == 'tede' else 300,
         accelerator=args.accelerator,
-        strategy="ddp_spawn" if args.approach_type == 'nfde' else None,
+        strategy="ddp_spawn" if args.approach_type == 'nfde' else "auto",
         devices=50 if args.approach_type == 'nfde' else "auto",
         precision="64",
         callbacks=[
