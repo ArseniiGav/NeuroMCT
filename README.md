@@ -2,7 +2,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.4.0-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-*Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning*
+# Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning
 
 This repository contains the implementation of neural likelihood estimators for Monte Carlo parameter tuning in high-precision neutrino experiments, with a focus on the JUNO (Jiangmen Underground Neutrino Observatory) detector.
 
