@@ -20,17 +20,15 @@ Precise modeling of detector energy response is crucial for next-generation neut
 - **Energy response parameter tuning** for three correlated parameters: Birks' coefficient (k_B), light yield (Y), and Cherenkov factor (f_C)
 - **Comprehensive uncertainty quantification** with additional testing datasets: near-zero systematic biases and uncertainties limited only by the statistics of the calibration data
 
-<p align="center">
-  <img src="docs/tede.png" width="600" alt="TEDE Architecture">
-  <br>
-  <em>TEDE Architecture</em>
-</p>
-
-<p align="center">
-  <img src="docs/nfde_inference_vis.png" width="300" alt="NFDE Inference">
-  <br>
-  <em>NFDE transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="docs/tede.png" width="600" alt="TEDE Architecture"></td>
+      <td align="center"><img src="docs/nfde_inference_vis.png" width="300" alt="NFDE Inference"></td>
+    </tr>
+  </table>
+  <br><em>Left: TEDE Architecture. Right: NFDE transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
+</div>
 
 ## Study background
 
