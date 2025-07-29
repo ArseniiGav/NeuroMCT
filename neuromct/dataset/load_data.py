@@ -1,8 +1,44 @@
+"""
+Data loading utilities for calibration datasets.
+
+This module provides functions to load and preprocess calibration data
+from different sources with various parameter combinations.
+The data is used for training and evaluating the models.
+"""
+
 import torch
 
 from ..configs import data_configs
 
 def load_processed_data(dataset_type, path_to_processed_data, approach_type, val2_rates=False):
+    """
+    Load preprocessed calibration data for the models.
+    
+    This function loads data, LS parameters, and source types for different
+    datasets used in training, validation, and testing of TEDE and NFDE models.
+    
+    Parameters
+    ----------
+    dataset_type : str
+        Type of dataset to load. Options: 'training', 'val1', 'val2_1', 'val2_2', 'val2_3'
+    path_to_processed_data : str
+        Base path to the directory containing processed data files
+    approach_type : str
+        Model approach type. Options: 'tede' (binned spectra) or 'nfde' (unbinned N_pe values)
+    val2_rates : bool, optional
+        Whether to compute and return data rates for val2 datasets (default: False)
+        
+    Returns
+    -------
+    tuple
+        For standard loading: (spectra/npe_data, params, source_types)
+        For val2_rates=True: normalized rates data
+        
+    Raises
+    ------
+    ValueError
+        If invalid dataset_type is provided or if val2_rates is used with non-val2 datasets
+    """
     fname = "spectra" if approach_type == "tede" else "npe"
     base_path = f"{path_to_processed_data}/{approach_type}"
     if dataset_type in ["training", "val1", "val2_1", "val2_2", "val2_3"]:
@@ -30,12 +66,28 @@ def load_processed_data(dataset_type, path_to_processed_data, approach_type, val
     else:
         return data
 
-def get_val2_data_rates(val2_data):
+def get_val2_data_rates(data):
+    """
+    Compute normalized rates for high-statistics validation datasets.
+    
+    This function normalizes spectral data by the total event count.
+    Used for val2 datasets which have high statistics.
+    
+    Parameters
+    ----------
+    data : tuple
+        Tuple containing (spectra, params, source_types) from load_processed_data
+        
+    Returns
+    -------
+    tuple
+        Tuple containing (normalized_spectra, params, source_types)        
+    """
     n_sources = data_configs['n_sources']
     val2_n_datasets = data_configs['val2_n_datasets']
     n_bins = data_configs['n_bins']
     params_dim = data_configs['params_dim']
-    spectra, params, source_types = val2_data
+    spectra, params, source_types = data
 
     # shape: (n_sources*n_datasets, n_bins) --> (n_sources, n_datasets, n_bins)
     spectra_reshaped = spectra.view(n_sources, val2_n_datasets, n_bins)
