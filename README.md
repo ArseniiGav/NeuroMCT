@@ -149,7 +149,7 @@ If you found this code useful for your research, please cite:
 ```
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the [MIT](https://opensource.org/license/mit/) - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
