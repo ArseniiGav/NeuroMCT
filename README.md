@@ -27,7 +27,7 @@ Precise modeling of detector energy response is crucial for next-generation neut
       <td><img src="docs/nfde_inference_vis.png" width="300" alt="NFDE Inference"></td>
     </tr>
   </table>
-  <br><em>Left: Transformer Encoder Density Estimator (TEDE) Architecture. Right: Normalizing Flows transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
+  <br><em>Left: TEDE Architecture. Right: NFDE transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
 </div>
 
 ## Study background
