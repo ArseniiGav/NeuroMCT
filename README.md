@@ -126,3 +126,36 @@ The parameter space analysis demonstrates:
 - **Model stability**: Both TEDE and NFDE show similar bias patterns
 
 ## Repository structure
+```
+neuromct/
+├── neuromct/                   # Main package
+│   ├── configs/                 # Configuration files
+│   ├── dataset/                 # Data loading and preprocessing
+│   ├── models/                  # Models implementations
+│   │   └── ml/                   # TEDE and NFDE models
+│   ├── fit/                   # Parameter inference methods
+│   ├── utils/                 # Utility functions
+│   └── plot/                  # Visualization tools
+├── scripts/                  # Training and analysis scripts
+└── docs/                     # Documentation and figures 
+```
+
+## Citation
+
+If you found this code useful for your research, please cite:
+
+```bibtex
+@article{neuromct2025,
+    title={Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning},
+    author={Gavrikov, Arsenii and Serafini, Andrea and Dolzhikov, Dmitry and others},
+    year={2025},
+    note={In preparation}
+}
+```
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+We are thankful to the JUNO collaboration for the support and advices provided during the drafting of this manuscript. We are also very grateful to CNAF and JINR cloud services for providing the computing resources necessary for the simulated data production and to CloudVeneto for offering IT support and infrastructure for training the machine learning models used in this study. Arsenii Gavrikov has received funding from the European Union's Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie Grant Agreement No. 101034319 and from the European Union --- NextGenerationEU. Dmitry Dolzhikov and Maxim Gonchar are supported in the framework of the State project ``Science'' by the Ministry of Science and Higher Education of the Russian Federation under the contract 075-15-2024-541.
