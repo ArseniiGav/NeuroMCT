@@ -21,13 +21,13 @@ Precise modeling of detector energy response is crucial for next-generation neut
 - **Comprehensive uncertainty quantification** with additional testing datasets: near-zero systematic biases and uncertainties limited only by the statistics of the calibration data
 
 <div align="center">
-  <img src="docs/tede.png" width="600" alt="TEDE Architecture">
-  <br><em>Transformer Encoder Density Estimator (TEDE) Architecture</em>
-</div>
-
-<div align="center">
-  <img src="docs/nfde_inference_vis.png" width="600" alt="NFDE Inference">
-  <br><em>Normalizing Flows transforming complex energy distributions to simple Gaussian</em>
+  <table>
+    <tr>
+      <td><img src="docs/tede.png" width="600" alt="TEDE Architecture"></td>
+      <td><img src="docs/nfde_inference_vis.png" width="300" alt="NFDE Inference"></td>
+    </tr>
+  </table>
+  <br><em>Left: Transformer Encoder Density Estimator (TEDE) Architecture. Right: Normalizing Flows transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
 </div>
 
 ## Study background
@@ -59,7 +59,7 @@ Our method uses simulation-based inference to:
 ### Normalizing flows visualization
 
 <div align="center">
-  <img src="docs/flows_animation.gif" width="600" alt="Flows Animation">
+  <img src="docs/flows_animation.gif" width="800" alt="Flows Animation">
   <br><em>Animation showing how normalizing flows transform the complex ²⁴¹Am-¹³C energy distribution into a standard Gaussian distribution</em>
 </div>
 
@@ -75,11 +75,6 @@ The NFDE model learns invertible transformations that map complex, multimodal en
 </div>
 
 Both models demonstrate excellent performance in reproducing the complex energy spectra across all calibration sources.
-
-<div align="center">
-  <img src="docs/nfde_inference_vis.png" width="600" alt="NFDE Inference">
-  <br><em>Normalizing flows transforming complex energy distributions to simple Gaussian through sequential transformations</em>
-</div>
 
 ### Parameter estimation results
 
