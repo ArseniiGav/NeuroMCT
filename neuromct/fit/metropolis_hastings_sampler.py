@@ -1,8 +1,30 @@
+"""
+Metropolis-Hastings MCMC sampler for Bayesian parameter inference.
+"""
+
 from tqdm import tqdm
 import numpy as np
 from uproot import recreate as uproot_recreate
 
 class SamplerMH:
+    """
+    Metropolis-Hastings MCMC sampler for Bayesian inference.
+        
+    Parameters
+    ----------
+    cost_fn : callable
+        Log-likelihood function that takes parameters and returns log-likelihood
+    prior_fn : callable  
+        Log-prior function that takes parameters and returns log-prior
+    initial_pos : array_like
+        Starting position for the MCMC chain
+    cov : array_like
+        Covariance matrix for the proposal distribution
+    par_names : list
+        Names of the parameters being sampled
+    rng : numpy.random.Generator, optional
+        Random number generator (default: None)
+    """
     def __init__(self, cost_fn, prior_fn, initial_pos, cov, par_names, rng=None):
         self._cost_fn = cost_fn
         self._prior_fn = prior_fn
@@ -14,6 +36,19 @@ class SamplerMH:
         self._last_position = None
 
     def sample(self, n_samples):
+        """
+        Generate MCMC samples using Metropolis-Hastings algorithm.
+        
+        Parameters
+        ----------
+        n_samples : int
+            Number of samples to generate
+            
+        Returns
+        -------
+        dict
+            Dictionary containing samples, log-probabilities, log-priors, and acceptance rate
+        """
         self.samples = np.zeros((n_samples, self._npars))
         self.samples[0] = self._initial_pos if self._last_position is None else self._last_position
 

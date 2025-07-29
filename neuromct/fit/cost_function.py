@@ -148,12 +148,39 @@ class UnbinnedNegativeLogLikelihood:
         return -2 * (log_prob + log_poisson)
 
 class UnbinnedLogLikelihood:
+    """
+    Unbinned log-likelihood function for continuous data analysis.
+    
+    This class implements the unbinned log-likelihood for continuous data,
+    used with models that can evaluate exact probability densities.
+    
+    Parameters
+    ----------
+    data : array_like
+        Observed continuous data points
+    model : callable
+        Model function that returns log-probability densities
+    """
     def __init__(self, data, model):
         self._n_tot = len(data)
         self._data = tensor(np.array(data), dtype=float64)
         self._model = model
 
     def __call__(self, pars):
+        """
+        Evaluate unbinned log-likelihood for given parameters.
+        
+        Parameters
+        ----------
+        pars : array_like
+            Model parameters, where pars[:3] are physics parameters
+            and pars[-1] is a normalization factor
+            
+        Returns
+        -------
+        float
+            Unbinned log-likelihood value
+        """
         nl_pars, norm = pars[:3], pars[-1]
         log_prob = self._model(
                 self._data,
@@ -163,11 +190,36 @@ class UnbinnedLogLikelihood:
         return log_prob + log_poisson
 
 class LogLikelihoodRatio:
+    """
+    Log-likelihood ratio function for model comparison.
+    
+    This class implements the log-likelihood ratio test statistic.
+    
+    Parameters
+    ----------
+    data : array_like
+        Observed event counts in each bin
+    model : callable
+        Model function that returns expected counts given parameters
+    """
     def __init__(self, data, model):
         self._data = np.array(data)
         self._model = model
 
     def __call__(self, pars):
+        """
+        Evaluate log-likelihood ratio for given parameters.
+        
+        Parameters
+        ----------
+        pars : array_like
+            Model parameters
+            
+        Returns
+        -------
+        float
+            Log-likelihood ratio test statistic
+        """
         lmbd = self._model(pars)
         mask = (self._data == 0)
         if np.any(mask):
