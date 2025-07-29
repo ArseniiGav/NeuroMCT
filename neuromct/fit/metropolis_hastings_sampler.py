@@ -3,20 +3,26 @@ import numpy as np
 from uproot import recreate as uproot_recreate
 
 class SamplerMH:
-    def __init__(self, cost_fn, initial_pos, cov, par_names, rng=None):
+    def __init__(self, cost_fn, prior_fn, initial_pos, cov, par_names, rng=None):
         self._cost_fn = cost_fn
+        self._prior_fn = prior_fn
         self._initial_pos = initial_pos
         self._npars = len(initial_pos)
         self._cov = cov
         self._par_names = par_names
         self._rng = rng if rng is not None else np.random.default_rng(None)
+        self._last_position = None
 
     def sample(self, n_samples):
         self.samples = np.zeros((n_samples, self._npars))
-        self.samples[0] = self._initial_pos
+        self.samples[0] = self._initial_pos if self._last_position is None else self._last_position
 
         self.log_probs = np.zeros(n_samples)
         self.log_probs[0] = self._cost_fn(self._initial_pos)
+
+        self.log_priors = np.zeros(n_samples)
+        self.log_priors[0] = self._prior_fn(self._initial_pos)
+
         accepted = 0
 
         chain_steps = self._rng.multivariate_normal(
@@ -31,21 +37,27 @@ class SamplerMH:
             current_log_prob = self.log_probs[i-1]
             proposed_log_prob = self._cost_fn(proposed_x)
 
-            log_acceptance_ratio = proposed_log_prob - current_log_prob
+            current_log_prior = self.log_priors[i-1]
+            proposed_log_prior = self._prior_fn(proposed_x)
+
+            log_acceptance_ratio = proposed_log_prob + proposed_log_prior - current_log_prob - current_log_prior
+            # log_acceptance_ratio = proposed_log_prob - current_log_prob
 
             if np.log(self._rng.uniform(0, 1)) < log_acceptance_ratio:
                 self.samples[i] = proposed_x
                 self.log_probs[i] = proposed_log_prob
+                self.log_priors[i] = proposed_log_prior
                 accepted += 1
             else:
                 self.samples[i] = current_x
                 self.log_probs[i] = current_log_prob
+                self.log_priors[i] = current_log_prior
 
         self._last_position = self.samples[-1]
         self.acceptance_rate = accepted / n_samples
         print(self.acceptance_rate)
 
-        return self.samples, self.log_probs, self.acceptance_rate
+        return self.samples, self.log_probs, self.log_priors, self.acceptance_rate
 
     def save(self, output_folder, name, metadata={}):
         full_output = f"{output_folder}/{name}.root"

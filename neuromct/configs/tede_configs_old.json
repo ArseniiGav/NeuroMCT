@@ -1,0 +1,22 @@
+{
+    "n_sources": 5,
+    "output_dim": 800,
+    "d_model": 150,
+    "nhead": 25,
+    "num_encoder_layers": 3,
+    "dim_feedforward": 352,
+    "activation_function": "gelu",
+    "learning_rate": 0.0022181871522130845,
+    "optimizer": "AdamW",
+    "lr_scheduler": "CosineAnnealingLR",
+    "dropout": 0.4,
+    "temperature": 1.42,
+    "batch_size": 128,
+    "weight_decay": 8.993937190809013e-05,
+    "T_max": 50,
+    "beta1": 0.77,
+    "beta2": 0.989,
+    "accelerator": "gpu",
+    "monitor_metric": "val_cramer_metric",
+    "seed": 222
+}
