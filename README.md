@@ -81,11 +81,11 @@ Both models demonstrate excellent performance in reproducing the complex energy 
 <div align="center">
   <table>
     <tr>
-      <td><img src="docs/fit_tede.png" width="400" alt="TEDE Fit Results"></td>
-      <td><img src="docs/fit_nfde.png" width="400" alt="NFDE Fit Results"></td>
+      <td align="center"><img src="docs/tede.png" width="400" alt="TEDE Architecture"></td>
+      <td align="center"><img src="docs/nfde_inference_vis.png" width="400" alt="NFDE Inference"></td>
     </tr>
   </table>
-  <br><em>Parameter estimation performance for a representative point using TEDE (left) and NFDE (right). Corner plots show posterior distributions for energy response parameters (k_B, f_C, Y). Green lines indicate true values, orange stars show best-fit values. Both models successfully recover input parameters within uncertainties.</em>
+  <br><em>Left: TEDE Architecture. Right: NFDE transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
 </div>
 
 The corner plots demonstrate that both TEDE and NFDE models achieve:
