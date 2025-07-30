@@ -18,17 +18,24 @@ Precise modeling of detector energy response is crucial for next-generation neut
 
 - **Bayesian parameter inference** using nested sampling
 - **Energy response parameter tuning** for three correlated parameters: Birks' coefficient (k_B), light yield (Y), and Cherenkov factor (f_C)
-- **Comprehensive uncertainty quantification** with additional testing datasets: near-zero systematic biases and uncertainties limited only by the statistics of the calibration data
+- **Comprehensive uncertainty quantification** with additional testing datasets
 
 <div align="center">
   <table>
     <tr>
-      <td align="center"><img src="docs/tede.png" width="600" alt="TEDE Architecture"></td>
-      <td align="center"><img src="docs/nfde_inference_vis.png" width="300" alt="NFDE Inference"></td>
+      <td align="center"><img src="docs/tede.png" width="600" alt="TEDE architecture"></td>
+      <td align="center"><img src="docs/nfde_inference_vis.png" width="300" alt="NFDE inference"></td>
     </tr>
   </table>
   <br><em>Left: TEDE Architecture. Right: NFDE transforming complex energy distributions to simple Gaussian through sequential transformations.</em>
 </div>
+
+<div align="center">
+  <img src="docs/flows_animation.gif" width="800" alt="NFDE animation">
+  <br><em>Animation showing how normalizing flows progressively build the complex ²⁴¹Am-¹³C energy distribution</em>
+</div>
+
+The NFDE model learns invertible transformations that map complex, multimodal energy spectra to simple standard normal distributions, enabling exact likelihood computation for unbinned analysis.
 
 ## Study background
 
@@ -56,21 +63,12 @@ Our method uses simulation-based inference to:
 2. Learn conditional probability densities p(x|φ) where x is the observed energy and φ are the parameters
 3. Integrate learned likelihoods with Bayesian nested sampling for parameter inference
 
-### Normalizing flows visualization
-
-<div align="center">
-  <img src="docs/flows_animation.gif" width="800" alt="Flows Animation">
-  <br><em>Animation showing how normalizing flows transform the complex ²⁴¹Am-¹³C energy distribution into a standard Gaussian distribution</em>
-</div>
-
-The NFDE model learns invertible transformations that map complex, multimodal energy spectra to simple standard normal distributions, enabling exact likelihood computation for unbinned analysis.
-
 ## Models performance
 
 ### Spectra PDF modeling accuracy
 
 <div align="center">
-  <img src="docs/model_comparison_spectra.png" width="800" alt="Model Comparison">
+  <img src="docs/model_comparison_spectra.png" width="800" alt="Model comparison">
   <br><em>Comparison of modeled PDFs with true energy spectra for all five calibration sources</em>
 </div>
 
@@ -81,8 +79,8 @@ Both models demonstrate excellent performance in reproducing the complex energy 
 <div align="center">
   <table>
     <tr>
-      <td align="center"><img src="docs/fit_tede.png" width="400" alt="TEDE Fit Results"></td>
-      <td align="center"><img src="docs/fit_nfde.png" width="400" alt="NFDE Fit Results"></td>
+      <td align="center"><img src="docs/fit_tede.png" width="400" alt="TEDE parameter inference results, single point"></td>
+      <td align="center"><img src="docs/fit_nfde.png" width="400" alt="NFDE parameter inference results, single point"></td>
     </tr>
   </table>
   <br><em>Parameter estimation performance for a representative point using TEDE (left) and NFDE (right). Corner plots show posterior distributions for energy response parameters (k_B, f_C, Y). Green lines indicate true values, orange stars show best-fit values. Both models successfully recover input parameters within uncertainties.</em>
@@ -98,7 +96,7 @@ The corner plots demonstrate that both TEDE and NFDE models achieve:
 #### Testing Dataset 2: Statistical scaling behavior
 
 <div align="center">
-  <img src="docs/testing_data2_ultranest.png" width="800" alt="Testing Dataset 2 Results">
+  <img src="docs/testing_data2_ultranest.png" width="800" alt="Results for testing dataset 2">
   <br><em>Aggregated parameter estimation results for TEDE (top) and NFDE (bottom) across varying statistical exposures. Shows median bias (solid lines), 1σ widths of best-fit distributions (shaded regions), and estimated uncertainties (dashed lines). Both models exhibit near-zero systematic bias and proper statistical scaling (1/√N dependence).</em>
 </div>
 
@@ -111,7 +109,7 @@ Key findings from systematic uncertainty analysis:
 #### Testing Dataset 1: Parameter space coverage
 
 <div align="center">
-  <img src="docs/testing_data1_ultranest.png" width="800" alt="Testing Dataset 1 Results">
+  <img src="docs/testing_data1_ultranest.png" width="800" alt="Results for testing dataset 1">
   <br><em>Performance across the entire parameter space using TEDE (top) and NFDE (bottom) for 1000 parameter combinations. Each point represents median bias over 100 fits. Both models maintain near-zero bias across the parameter space, demonstrating robust interpolation between training points.</em>
 </div>
 
