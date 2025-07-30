@@ -21,7 +21,7 @@ Precise modeling of detector energy response is crucial for next-generation neut
 - **Comprehensive uncertainty quantification** with additional testing datasets
 
 | ![TEDE Architecture](docs/tede.png) | ![NFDE Inference](docs/nfde_inference_vis.png) |
-|:---:|:---:|
+|:-----:|:---:|
 | TEDE Architecture | NFDE transforming complex energy distributions to simple Gaussian distributions through sequential transformations |
 
 ![NFDE Animation](docs/flows_animation.gif)
