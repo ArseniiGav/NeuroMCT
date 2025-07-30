@@ -20,20 +20,12 @@ Precise modeling of detector energy response is crucial for next-generation neut
 - **Energy response parameter tuning** for three correlated parameters: Birks' coefficient ($k_B$), light yield ($Y$), and Cherenkov factor ($f_C$)
 - **Comprehensive uncertainty quantification** with additional testing datasets
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><img src="docs/tede.png" width="600" alt="TEDE architecture"></td>
-      <td align="center"><img src="docs/nfde_inference_vis.png" width="300" alt="NFDE inference"></td>
-    </tr>
-  </table>
-  <br><em>Left: TEDE Architecture. Right: NFDE transforming complex energy distributions to simple Gaussian distributions through sequential transformations.</em>
-</div>
+| ![TEDE Architecture](docs/tede.png) | ![NFDE Inference](docs/nfde_inference_vis.png) |
+|:---:|:---:|
+| TEDE Architecture | NFDE transforming complex energy distributions to simple Gaussian distributions through sequential transformations |
 
-<div align="center">
-  <img src="docs/flows_animation.gif" width="800" alt="NFDE animation">
-  <br><em>Animation showing how normalizing flows progressively build the complex ${}^{241}$Am-${}^{13}$C energy distribution</em>
-</div>
+![NFDE Animation](docs/flows_animation.gif)
+*Animation showing how normalizing flows progressively build the complex ${}^{241}$Am-${}^{13}$C energy distribution*
 
 The NFDE model learns invertible transformations that map complex, multimodal energy spectra to simple standard normal distributions, enabling exact likelihood computation for unbinned analysis.
 
@@ -67,24 +59,17 @@ Our method uses simulation-based inference to:
 
 ### Spectra PDF modeling accuracy
 
-<div align="center">
-  <img src="docs/model_comparison_spectra.png" width="800" alt="Model comparison">
-  <br><em>Comparison of modeled PDFs with true energy spectra for all five calibration sources</em>
-</div>
+![Model Comparison](docs/model_comparison_spectra.png)
+*Comparison of modeled PDFs with true energy spectra for all five calibration sources*
 
 Both models demonstrate excellent performance in reproducing the complex energy spectra across all calibration sources.
 
 ### Parameter estimation results
 
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><img src="docs/fit_tede.png" width="400" alt="TEDE parameter inference results, single point"></td>
-      <td align="center"><img src="docs/fit_nfde.png" width="400" alt="NFDE parameter inference results, single point"></td>
-    </tr>
-  </table>
-  <br><em>Parameter estimation performance for a representative point using TEDE (left) and NFDE (right). Corner plots show posterior distributions for energy response parameters ($k_B$, $f_C$, $Y$). Green lines indicate true values, orange stars show best-fit values. Both models successfully recover input parameters within uncertainties.</em>
-</div>
+| ![TEDE Fit Results](docs/fit_tede.png) | ![NFDE Fit Results](docs/fit_nfde.png) |
+|:---:|:---:|
+| TEDE parameter inference results | NFDE parameter inference results |
+*Parameter estimation performance for a representative point using TEDE (left) and NFDE (right). Corner plots show posterior distributions for energy response parameters ($k_B$, $f_C$, $Y$). Green lines indicate true values, orange stars show best-fit values. Both models successfully recover input parameters within uncertainties.*
 
 The corner plots demonstrate that both TEDE and NFDE models achieve:
 - **Accurate parameter recovery**: Best-fit values closely match true parameters
@@ -95,10 +80,8 @@ The corner plots demonstrate that both TEDE and NFDE models achieve:
 
 #### Testing Dataset 2: Statistical scaling behavior
 
-<div align="center">
-  <img src="docs/testing_data2_ultranest.png" width="800" alt="Results for testing dataset 2">
-  <br><em>Aggregated parameter estimation results for TEDE (top) and NFDE (bottom) across varying statistical exposures. Shows median bias (solid lines), 1$\sigma$ widths of best-fit distributions (shaded regions), and estimated uncertainties (dashed lines). Both models exhibit near-zero systematic biases and uncertainties limited only by the statistics of the calibration data (1/$\sqrt{N}$ dependence).</em>
-</div>
+![Testing Dataset 2 Results](docs/testing_data2_ultranest.png)
+*Aggregated parameter estimation results for TEDE (top) and NFDE (bottom) across varying statistical exposures. Shows median bias (solid lines), 1$\sigma$ widths of best-fit distributions (shaded regions), and estimated uncertainties (dashed lines). Both models exhibit near-zero systematic biases and uncertainties limited only by the statistics of the calibration data (1/$\sqrt{N}$ dependence).*
 
 Key findings from systematic uncertainty analysis:
 - **Near-zero systematic bias**: Relative deviations below 0.25% for $k_B$, 0.55% for $f_C$, and 0.02% for $Y$
@@ -107,10 +90,8 @@ Key findings from systematic uncertainty analysis:
 
 #### Testing Dataset 1: Parameter space coverage
 
-<div align="center">
-  <img src="docs/testing_data1_ultranest.png" width="800" alt="Results for testing dataset 1">
-  <br><em>Performance across the entire parameter space using TEDE (top) and NFDE (bottom) for 1000 parameter combinations. Each point represents median bias over 100 fits. Both models maintain near-zero bias across the parameter space, demonstrating robust interpolation between training points.</em>
-</div>
+![Testing Dataset 1 Results](docs/testing_data1_ultranest.png)
+*Performance across the entire parameter space using TEDE (top) and NFDE (bottom) for 1000 parameter combinations. Each point represents median bias over 100 fits. Both models maintain near-zero bias across the parameter space, demonstrating robust interpolation between training points.*
 
 The analysis for the entire parameter space demonstrates:
 - **Good performance**: Near-zero biases
