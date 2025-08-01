@@ -4,7 +4,7 @@
 
 # Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning
 
-This repository contains the implementation of neural likelihood estimators for Monte Carlo parameter tuning in high-precision neutrino experiments, with a focus on the JUNO (Jiangmen Underground Neutrino Observatory) detector. The code presented here was used for our study that is available online on [arXiv](https://arxiv.org/abs/NO_ID_YET). Please refer to the paper for details. 
+This repository contains the implementation of neural likelihood estimators for Monte Carlo parameter tuning in high-precision neutrino experiments, with a focus on the JUNO (Jiangmen Underground Neutrino Observatory) detector. The code presented here was used for our study that is available online on [arXiv](https://arxiv.org/abs/2507.23297). Please refer to the paper for details. 
 
 ## Overview
 
@@ -125,11 +125,14 @@ neuromct/
 If you found this code useful for your research, please cite:
 
 ```bibtex
-@article{neuromct2025,
-    title={Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning},
-    author={Gavrikov, Arsenii and Serafini, Andrea and Dolzhikov, Dmitry and others},
-    year={2025},
-    note={In preparation}
+@article{Gavrikov:2025rps,
+    author = "Gavrikov, Arsenii and Serafini, Andrea and Dolzhikov, Dmitry and others",
+    title = "{Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning}",
+    eprint = "2507.23297",
+    archivePrefix = "arXiv",
+    primaryClass = "physics.data-an",
+    month = "7",
+    year = "2025"
 }
 ```
 ## License
