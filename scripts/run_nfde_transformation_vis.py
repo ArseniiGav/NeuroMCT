@@ -48,7 +48,7 @@ def plot_initial_spectrum(ax,
     x_pdf = x_counts / (x_counts.sum() * (x_bins[1] - x_bins[0]))
     ax.stairs(x_pdf, x_bins, color=color, alpha=0.8, label=label, linestyle=linestyle)
     ax.legend(fontsize=legend_size, loc=loc)
-    ax.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
+    ax.set_xlabel("Number of photo-electrons: " + r"$N_{\rm{p.e.}} \ / \ 10^3$", fontsize=16)
     ax.set_ylabel("Prob. density", fontsize=ylabel_size)
     ax.set_yscale('log')
     ax.yaxis.set_tick_params(labelsize=yticks_size)
@@ -72,7 +72,7 @@ def plot_transformation(ax,
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(z_min, z_max)
     ax.legend(fontsize=14, loc=loc)
-    ax.set_xlabel("Number of photo-electrons: " + r"$N_{p.e.} \ / \ 10^3$", fontsize=16)
+    ax.set_xlabel("Number of photo-electrons: " + r"$N_{\rm{p.e.}} \ / \ 10^3$", fontsize=16)
     ax.set_ylabel("z", fontsize=ylabel_size)
     ax.yaxis.set_tick_params(labelsize=yticks_size)
 
