@@ -105,6 +105,22 @@ class NFDELightningTraining(LightningModule):
         batch_size = real_energies.shape[0]
         x = self.x_values.to(device=real_energies.device)
 
+        if batch_size > 1 and self.loss_function == 'kl-div':
+            # Replace NaNs with 0.0 to prevent NaN gradients in backward pass
+            real_energies_safe = torch.nan_to_num(real_energies, nan=0.0)
+            base_log_prob, log_det_jacobian = self.model._log_prob_comp(
+                real_energies_safe, params, source_types
+            )
+            loss_matrix = -base_log_prob - log_det_jacobian
+            mask = ~real_energies.isnan()
+            loss_matrix = torch.where(mask, loss_matrix, torch.zeros_like(loss_matrix))
+            item_losses = loss_matrix.sum(dim=1) / mask.sum(dim=1)
+            mean_loss = item_losses.mean()
+            self.log(f"training_loss", mean_loss, prog_bar=True, 
+                     on_step=True, on_epoch=True, sync_dist=True)
+            self.train_loss_to_plot.append(mean_loss.item())
+            return mean_loss
+
         losses = []
         for i in range(batch_size):
             no_nan_inds = ~real_energies[i].isnan()
@@ -153,13 +169,16 @@ class NFDELightningTraining(LightningModule):
         batch_size = real_energies.shape[0]
         x = self.x_values.to(device=real_energies.device)
 
-        prob_x_batch = []
-        for i in range(batch_size):
-            prob_x = torch.exp(
-                self.model.log_prob(x, params[i], source_types[i])
-            )
-            prob_x_batch.append(prob_x)
-        prob_x_batch = torch.vstack(prob_x_batch)
+        if batch_size > 1:
+            prob_x_batch = torch.exp(self.model.log_prob(x, params, source_types))
+        else:
+            prob_x_batch = []
+            for i in range(batch_size):
+                prob_x = torch.exp(
+                    self.model.log_prob(x, params[i], source_types[i])
+                )
+                prob_x_batch.append(prob_x)
+            prob_x_batch = torch.vstack(prob_x_batch)
 
         metrics_values = self._compute_and_log_val_metrics(
             x, prob_x_batch, real_energies)

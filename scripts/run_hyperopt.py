@@ -83,6 +83,9 @@ def setup_data_and_paths(args, approach_type):
                            if approach_type == 'nfde' 
                            else data_configs['path_to_tede_hopt_results'])
 
+    if getattr(args, 'test_mode', False):
+        path_to_hopt_results += '_test'
+
     # Create directories for trials
     os.makedirs(f'{path_to_hopt_results}/seed_{args.seed}', exist_ok=True)
     for run_index in range(args.n_trials+1):
@@ -395,6 +398,12 @@ def create_model_and_training(approach_type, main_hparams, optimizer, lr_schedul
             - model (nn.Module): NFDE or TEDE model
             - model_lightning_training (LightningModule): Training module
     """
+    # Parse remaining arguments based on approach type
+    if approach_type == 'nfde':
+        args = nfde_argparse()
+    else:
+        args = tede_argparse()
+
     if approach_type == 'nfde':
         model = NFDE(
             n_flows=main_hparams['n_flows'],
@@ -548,8 +557,8 @@ def objective(trial, args, path_to_processed_data,
     trainer = Trainer(
         max_epochs=2000 if args.approach_type == 'tede' else 300,
         accelerator=args.accelerator,
-        strategy="ddp_spawn" if args.approach_type == 'nfde' else "auto",
-        devices=50 if args.approach_type == 'nfde' else "auto",
+        strategy="ddp_spawn" if args.approach_type == 'nfde' and args.accelerator == 'cpu' else "auto",
+        devices=50 if args.approach_type == 'nfde' and args.accelerator == 'cpu' else "auto",
         precision="64",
         callbacks=[
             checkpoint_callback,
@@ -646,9 +655,12 @@ def main():
         --seed: Random seed for reproducibility
         --monitor_metric: Metric to monitor for optimization
     """
-    parser = argparse.ArgumentParser(description='Run hyperparameter optimization')
+    # Get command line arguments
+    parser = argparse.ArgumentParser()
     parser.add_argument('--approach_type', type=str, choices=['nfde', 'tede'], required=True,
                       help='Choose the approach type: nfde or tede')
+    approach_args, _ = parser.parse_known_args()
+    approach_type = approach_args.approach_type
     parser.add_argument("--n_trials", type=int, default=100,
                       help='The number of Optuna trials (default=100).')
     parser.add_argument("--accelerator", type=str, default="gpu",
@@ -657,7 +669,9 @@ def main():
                       help='Seed for reproducibility (default=22).')
     parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
                       help='The main validation metric used during the hyperopt search.')
-    args = parser.parse_args()
+    parser.add_argument("--test_mode", action="store_true",
+                      help='If True, appends _test to the save directories to avoid overwriting')
+    args, _ = parser.parse_known_args()
 
     # Set up environment and configurations
     setup_environment(args.approach_type)

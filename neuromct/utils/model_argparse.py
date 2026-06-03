@@ -49,14 +49,16 @@ def tede_argparse():
                          help='Device to use for training (default="gpu")')
     parser.add_argument("--seed", type=int, default=22,
                          help='Random seed for reproducibility (default=22)')
-    args = parser.parse_args("") # "" is used to avoid errors with Ipython
+    parser.add_argument("--test_mode", action="store_true",
+                         help='If True, appends _test to the save directories to avoid overwriting')
+    args, _ = parser.parse_known_args()
 
     if args.config:
         with open(args.config, 'r') as f:
             config_args = json.load(f)
         parser.set_defaults(**config_args)
 
-    final_args = parser.parse_args("") # "" is used to avoid errors with Ipython
+    final_args, _ = parser.parse_known_args()
     return final_args
 
 def nfde_argparse():
@@ -99,12 +101,14 @@ def nfde_argparse():
                          help='Device to use for training (default="cpu")')
     parser.add_argument("--seed", type=int, default=22,
                          help='Random seed for reproducibility (default=22)')
-    args = parser.parse_args("") # "" is used to avoid errors with Ipython
+    parser.add_argument("--test_mode", action="store_true",
+                         help='If True, appends _test to the save directories to avoid overwriting')
+    args, _ = parser.parse_known_args()
 
     if args.config:
         with open(args.config, 'r') as f:
             config_args = json.load(f)
         parser.set_defaults(**config_args)
 
-    final_args = parser.parse_args("") # "" is used to avoid errors with Ipython
+    final_args, _ = parser.parse_known_args()
     return final_args

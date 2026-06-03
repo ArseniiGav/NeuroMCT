@@ -199,21 +199,26 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, bin_si
         batch_size=batch_size,
         shuffle=True,
         num_workers=20 if approach_type == 'tede' else 0,
-        pin_memory=True
+        pin_memory=True,
+        #persistent_workers=True
     )
 
     val1_loader = DataLoader(
         val1_data,
         batch_size=val1_data.__len__() if approach_type == 'tede' else batch_size,
         shuffle=False,
-        pin_memory=True
+        num_workers=20 if approach_type == 'tede' else 0,
+        pin_memory=True,
+        #persistent_workers=True
     )
 
     val2_loader = DataLoader(
         val2_data,
         batch_size=val2_data.__len__() if approach_type == 'tede' else batch_size,
         shuffle=False,
-        pin_memory=True
+        num_workers=20 if approach_type == 'tede' else 0,
+        pin_memory=True,
+        #persistent_workers=True
     )
 
     return train_loader, val1_loader, val2_loader
@@ -238,7 +243,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--approach_type', type=str, choices=['nfde', 'tede'], required=True,
                       help='Choose the approach type: nfde or tede')
-    approach_args = parser.parse_args()
+    approach_args, _ = parser.parse_known_args()
     approach_type = approach_args.approach_type
     
     # Set up paths and configurations
@@ -263,6 +268,9 @@ def main():
             dtype=torch.float64
         )
         bin_size = data_configs['bin_size']
+
+    if getattr(args, 'test_mode', False):
+        path_to_training_results += '_test'
 
     seed_everything(args.seed, workers=True)
 
@@ -307,8 +315,8 @@ def main():
         trainer = Trainer(
             max_epochs=2000,
             accelerator=args.accelerator,
-            strategy="ddp_spawn",
-            devices=50,
+            strategy="ddp_spawn" if args.accelerator == "cpu" else "auto",
+            devices=50 if args.accelerator == "cpu" else "auto",
             precision="64",
             callbacks=[
                 checkpoint_callback,

@@ -99,7 +99,7 @@ class Flow(nn.Module):
         """
         wu = u * w
         m_wu = -1 + torch.log(1 + torch.exp(wu))
-        u_hat = u + (m_wu - wu) * w / torch.norm(w, p=2) ** 2
+        u_hat = u + (m_wu - wu) * w / torch.norm(w, p=2, dim=-1, keepdim=True) ** 2
         return u_hat
 
     def forward(self, 
@@ -141,17 +141,23 @@ class Flow(nn.Module):
         """
         params_emb = self.param_net(params) # [param_dim] -> [n_units]
         source_types_emb = self.source_type_embedding(source_types) # [1] -> [1, n_units]
-        source_types_emb = source_types_emb.squeeze(0) # [1, n_units] -> [n_units]
-        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=0) # [n_units * 2]
+        source_types_emb = source_types_emb.squeeze(-2) # [1, n_units] -> [n_units]
+        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=-1) # [n_units * 2]
         flow_params = self.conditions_to_params_net(input_emb_cat) # [n_units * 2] -> [3]
         
         if self.flow_type == 'planar':
-            w = torch.tanh(flow_params[0])
-            u = torch.tanh(flow_params[1])
-            b = flow_params[2]
+            w = torch.tanh(flow_params[..., 0])
+            u = torch.tanh(flow_params[..., 1])
+            b = flow_params[..., 2]
+            
+            if flow_params.dim() == 2:
+                w = w.unsqueeze(-1)
+                u = u.unsqueeze(-1)
+                b = b.unsqueeze(-1)
     
-            if u * w < -1: 
-                u = self._get_u_hat(u, w)
+            mask = (u * w < -1)
+            if mask.any():
+                u = torch.where(mask, self._get_u_hat(u, w), u)
 
             m = x * w + b
             h = torch.tanh(m)
@@ -161,9 +167,14 @@ class Flow(nn.Module):
             log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
 
         elif self.flow_type == 'radial':
-            α = torch.log(torch.exp(flow_params[0]) + 1)
-            β = torch.exp(flow_params[1]) - 1
-            γ = flow_params[2]
+            α = torch.log(torch.exp(flow_params[..., 0]) + 1)
+            β = torch.exp(flow_params[..., 1]) - 1
+            γ = flow_params[..., 2]
+            
+            if flow_params.dim() == 2:
+                α = α.unsqueeze(-1)
+                β = β.unsqueeze(-1)
+                γ = γ.unsqueeze(-1)
 
             r = x - γ
             z = x + α * β * r / (α + torch.abs(r))
@@ -212,17 +223,23 @@ class Flow(nn.Module):
 
         params_emb = self.param_net(params) # [param_dim] -> [n_units]
         source_types_emb = self.source_type_embedding(source_types) # [1] -> [1, n_units]
-        source_types_emb = source_types_emb.squeeze(0) # [1, n_units] -> [n_units]
-        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=0) # [n_units * 2]
+        source_types_emb = source_types_emb.squeeze(-2) # [1, n_units] -> [n_units]
+        input_emb_cat = torch.cat([params_emb, source_types_emb], dim=-1) # [n_units * 2]
         flow_params = self.conditions_to_params_net(input_emb_cat) # [n_units * 2] -> [3]
 
         if self.flow_type == 'planar':
-            w = torch.tanh(flow_params[0])
-            u = torch.tanh(flow_params[1])
-            b = flow_params[2]
+            w = torch.tanh(flow_params[..., 0])
+            u = torch.tanh(flow_params[..., 1])
+            b = flow_params[..., 2]
+            
+            if flow_params.dim() == 2:
+                w = w.unsqueeze(-1)
+                u = u.unsqueeze(-1)
+                b = b.unsqueeze(-1)
 
-            if u * w < -1: 
-                u = self._get_u_hat(u, w)
+            mask = (u * w < -1)
+            if mask.any():
+                u = torch.where(mask, self._get_u_hat(u, w), u)
 
             for _ in range(max_iters): 
                 z0, _ = self.forward(x0, params, source_types)
@@ -233,9 +250,14 @@ class Flow(nn.Module):
                 x0 = x0 + (z - z0) * f_prime_inverse
 
         elif self.flow_type == 'radial':
-            α = torch.log(torch.exp(flow_params[0]) + 1)
-            β = torch.exp(flow_params[1]) - 1
-            γ = flow_params[2]
+            α = torch.log(torch.exp(flow_params[..., 0]) + 1)
+            β = torch.exp(flow_params[..., 1]) - 1
+            γ = flow_params[..., 2]
+            
+            if flow_params.dim() == 2:
+                α = α.unsqueeze(-1)
+                β = β.unsqueeze(-1)
+                γ = γ.unsqueeze(-1)
 
             for _ in range(max_iters):
                 z0, _ = self.forward(x0, params, source_types)
@@ -379,10 +401,10 @@ class NFDE(nn.Module):
             - Transformed values z
             - Sum of log-dets of Jacobians of the transformations
         """
-        log_det_sum = torch.zeros_like(x)
+        log_det_sum = 0.0
         for flow in self.flows:
             x, log_det = flow(x, params, source_types)
-            log_det_sum += log_det
+            log_det_sum = log_det_sum + log_det
         z = x
         return z, log_det_sum
 
