@@ -8,7 +8,7 @@ from ...utils import (
     nfde_argparse
 )
 
-def setup(model_type, device, base_path_to_models=None):
+def setup(model_type, device, base_path_to_models=None, model_path=None):
     base_path_to_models = base_path_to_models if base_path_to_models is not None \
             else data_configs['base_path_to_models']
     
@@ -29,9 +29,10 @@ def setup(model_type, device, base_path_to_models=None):
             bin_size=data_configs['bin_size']
         ).double().to(device)
 
+        load_path = model_path if model_path else f"{base_path_to_models}/models/tede_model.pth"
         tede_model.load_state_dict(
             torch.load(
-                f"{base_path_to_models}/models/tede_model.pth", 
+                load_path, 
                 map_location=device,
                 weights_only=True
             )
@@ -49,9 +50,10 @@ def setup(model_type, device, base_path_to_models=None):
             flow_type=args.flow_type,
         ).double().to(device)
 
+        load_path = model_path if model_path else f"{base_path_to_models}/models/nfde_model.pth"
         nfde_model.load_state_dict(
             torch.load(
-                f"{base_path_to_models}/models/nfde_model.pth", 
+                load_path, 
                 map_location=device,
                 weights_only=True
             )
