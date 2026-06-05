@@ -51,6 +51,10 @@ def tede_argparse():
                          help='Random seed for reproducibility (default=22)')
     parser.add_argument("--test_mode", action="store_true",
                          help='If True, appends _test to the save directories to avoid overwriting')
+    parser.add_argument("--plot_every", type=int, default=1,
+                         help='Frequency of plotting during training (default=1)')
+    parser.add_argument("--model_save_path", type=str, default="",
+                         help='Custom absolute path to save the trained model')
     args, _ = parser.parse_known_args()
 
     if args.config:
@@ -103,6 +107,10 @@ def nfde_argparse():
                          help='Random seed for reproducibility (default=22)')
     parser.add_argument("--test_mode", action="store_true",
                          help='If True, appends _test to the save directories to avoid overwriting')
+    parser.add_argument("--plot_every", type=int, default=1,
+                         help='Frequency of plotting during training (default=1)')
+    parser.add_argument("--model_save_path", type=str, default="",
+                         help='Custom absolute path to save the trained model')
     args, _ = parser.parse_known_args()
 
     if args.config:

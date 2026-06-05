@@ -35,10 +35,20 @@ data_configs = {
     # params for plots configs
     "n_params_values_to_vis": 4,
 
-    "params_values_to_vis_training": torch.tensor(
+    "params_values_to_vis_training_21": torch.tensor(
         [0.0500, 0.3500, 0.6500, 0.9500], dtype=torch.float64),
-    "base_value_to_vis_training": torch.tensor(
+    "base_value_to_vis_training_21": torch.tensor(
         0.5000, dtype=torch.float64),
+
+    "params_values_to_vis_training_11": torch.tensor(
+        [0.1000, 0.3000, 0.7000, 0.9000], dtype=torch.float64),
+    "base_value_to_vis_training_11": torch.tensor(
+        0.5000, dtype=torch.float64),
+
+    "params_values_to_vis_training_6": torch.tensor(
+        [0.2000, 0.4000, 0.6000, 0.8000], dtype=torch.float64),
+    "base_value_to_vis_training_6": torch.tensor(
+        0.4000, dtype=torch.float64),
 
     "params_values_to_vis_val1": torch.tensor(
         [0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float64),

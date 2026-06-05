@@ -43,12 +43,15 @@ class ModelResultsVisualizer:
 
         self.scaler = load_minimax_scaler(path_to_scaler)
 
+        # For the ground truth visual histograms, we must always load the TEDE dataset
+        vis_data_path = path_to_processed_data.replace("/nfde/", "/tede/")
+        
         self.n_params_values_to_vis = n_params_values_to_vis
-        training_data = load_processed_data("training", path_to_processed_data, "tede")
+        training_data = load_processed_data("training", vis_data_path, "tede")
         self.training_data_to_vis, self.training_params_to_vis_transformed = self._get_data_to_vis(
             training_data, params_values_to_vis_training, base_value_to_vis_training)
 
-        val1_data = load_processed_data("val1", path_to_processed_data, "tede")
+        val1_data = load_processed_data("val1", vis_data_path, "tede")
         self.val1_data_to_vis, self.val1_params_to_vis_transformed = self._get_data_to_vis(
             val1_data, params_values_to_vis_val1, base_value_to_vis_val1)
 
@@ -71,7 +74,7 @@ class ModelResultsVisualizer:
         val2_data = []
         for i in range(3):
             val2_i_data = load_processed_data(
-                f"val2_{i+1}", path_to_processed_data, "tede", val2_rates=True)
+                f"val2_{i+1}", vis_data_path, "tede", val2_rates=True)
             val2_i_data_spectra = val2_i_data[0]
             val2_i_data_spectra = val2_i_data_spectra / (val2_i_data_spectra.sum(1)[:, None] * self.bin_size)
             val2_data.append(val2_i_data_spectra)

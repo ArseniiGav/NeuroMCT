@@ -124,7 +124,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     )
 
     model_res_visualizator = res_visualizator_setup(
-        data_configs, plot_every_n_train_epochs=1)
+        data_configs, plot_every_n_train_epochs=args.plot_every)
     
     res_visualizer_callback = ModelResultsVisualizerCallback(
         res_visualizer=model_res_visualizator,
@@ -144,13 +144,14 @@ def setup_common_components(args, approach_type, path_to_training_results):
     return (optimizer, optimizer_hparams, lr_scheduler, val_metric_functions,
             checkpoint_callback, early_stopping_callback, res_visualizer_callback, logger)
 
-def create_dataloaders(approach_type, path_to_processed_data, batch_size, bin_size=None):
+def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_batch_size=None, bin_size=None):
     """Create data loaders for training and validation.
 
     Args:
         approach_type (str): Type of approach ('nfde' or 'tede')
         path_to_processed_data (str): Path to the processed dataset
         batch_size (int): Batch size for training
+        val_batch_size (int, optional): Batch size for validation
         bin_size (float, optional): Bin size for TEDE approach
 
     Returns:
@@ -200,25 +201,24 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, bin_si
         shuffle=True,
         num_workers=20 if approach_type == 'tede' else 0,
         pin_memory=True,
-        #persistent_workers=True
     )
+
+    val_batch_size = val_batch_size if val_batch_size is not None else batch_size * 16
 
     val1_loader = DataLoader(
         val1_data,
-        batch_size=val1_data.__len__() if approach_type == 'tede' else batch_size,
+        batch_size=val1_data.__len__() if approach_type == 'tede' else val_batch_size,
         shuffle=False,
         num_workers=20 if approach_type == 'tede' else 0,
         pin_memory=True,
-        #persistent_workers=True
     )
 
     val2_loader = DataLoader(
         val2_data,
-        batch_size=val2_data.__len__() if approach_type == 'tede' else batch_size,
+        batch_size=val2_data.__len__() if approach_type == 'tede' else val_batch_size,
         shuffle=False,
         num_workers=20 if approach_type == 'tede' else 0,
         pin_memory=True,
-        #persistent_workers=True
     )
 
     return train_loader, val1_loader, val2_loader
@@ -243,15 +243,35 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--approach_type', type=str, choices=['nfde', 'tede'], required=True,
                       help='Choose the approach type: nfde or tede')
+    parser.add_argument("--batch_size", type=int, default=4096,
+                         help='Batch size for training (default=4096)')
+    parser.add_argument("--val_batch_size", type=int, default=65536,
+                         help='Batch size for validation (default=65536)')
+    parser.add_argument("--epochs", type=int, default=100000,
+                         help='Maximum number of training epochs (default=10000)')
+    parser.add_argument('--processed_data_dir', type=str, default=None,
+                      help='Override path to processed data')
+    parser.add_argument('--results_dir', type=str, default=None,
+                      help='Override path to save training results')
     approach_args, _ = parser.parse_known_args()
     approach_type = approach_args.approach_type
     
     # Set up paths and configurations
     base_path_to_models = data_configs['base_path_to_models']
-    path_to_processed_data = data_configs['path_to_processed_data']
-    path_to_training_results = (data_configs['path_to_tede_training_results'] 
-                              if approach_type == 'tede' 
-                              else data_configs['path_to_nfde_training_results'])
+    
+    if getattr(approach_args, 'processed_data_dir', None):
+        path_to_processed_data = approach_args.processed_data_dir
+        # Update data_configs so the visualizer uses the correct dataset
+        data_configs['path_to_processed_data'] = path_to_processed_data
+    else:
+        path_to_processed_data = data_configs['path_to_processed_data']
+        
+    if approach_args.results_dir:
+        path_to_training_results = approach_args.results_dir
+    else:
+        path_to_training_results = (data_configs['path_to_tede_training_results'] 
+                                  if approach_type == 'tede' 
+                                  else data_configs['path_to_nfde_training_results'])
 
     # Parse remaining arguments based on approach type
     if approach_type == 'nfde':
@@ -281,9 +301,10 @@ def main():
 
     # Create dataloaders
     train_loader, val1_loader, val2_loader = create_dataloaders(
-        approach_type, 
-        path_to_processed_data, 
+        approach_type,
+        path_to_processed_data,
         args.batch_size,
+        getattr(args, 'val_batch_size', None),
         bin_size if approach_type == 'tede' else None
     )
 
@@ -311,7 +332,7 @@ def main():
             n_en_values=args.n_en_values,
             en_limits=en_limits
         )
-        
+
         trainer = Trainer(
             max_epochs=2000,
             accelerator=args.accelerator,
@@ -437,9 +458,21 @@ def main():
         )
 
     # Save the best model
+    if "tdata_size_check" in path_to_training_results:
+        parts = path_to_training_results.rstrip('/').split('/')
+        model_name_prefix = f"{parts[-2]}_{parts[-1]}"
+        model_save_dir = f"{base_path_to_models}/models/tdata_size_check"
+        os.makedirs(model_save_dir, exist_ok=True)
+        model_save_path = os.path.join(model_save_dir, f"{model_name_prefix}_model.pth")
+    elif getattr(args, "model_save_path", ""):
+        model_save_path = args.model_save_path
+        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
+    else:
+        model_save_path = f"{base_path_to_models}/models/{approach_type}_model.pth"
+
     torch.save(
         best_model.model.state_dict(),
-        f"{base_path_to_models}/models/{approach_type}_model.pth"
+        model_save_path
     )
 
 if __name__ == "__main__":

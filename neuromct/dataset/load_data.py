@@ -40,7 +40,10 @@ def load_processed_data(dataset_type, path_to_processed_data, approach_type, val
         If invalid dataset_type is provided or if val2_rates is used with non-val2 datasets
     """
     fname = "spectra" if approach_type == "tede" else "npe"
-    base_path = f"{path_to_processed_data}/{approach_type}"
+    if "sparsified" in path_to_processed_data:
+        base_path = path_to_processed_data
+    else:
+        base_path = f"{path_to_processed_data}/{approach_type}"
     if dataset_type in ["training", "val1", "val2_1", "val2_2", "val2_3"]:
         dataset_type_dir_name = dataset_type.split('_')[0]
         spectra_path = f"{base_path}/{dataset_type_dir_name}/{dataset_type}_{fname}.pt"

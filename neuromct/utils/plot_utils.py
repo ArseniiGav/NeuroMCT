@@ -12,8 +12,17 @@ def res_visualizator_setup(configs, plot_every_n_train_epochs):
     params_dim = configs['params_dim']
 
     n_params_values_to_vis = configs['n_params_values_to_vis']
-    params_values_to_vis_training = configs['params_values_to_vis_training']
-    base_value_to_vis_training = configs['base_value_to_vis_training']
+    
+    if "11grid" in path_to_processed_data:
+        params_values_to_vis_training = configs['params_values_to_vis_training_11']
+        base_value_to_vis_training = configs['base_value_to_vis_training_11']
+    elif "6grid" in path_to_processed_data:
+        params_values_to_vis_training = configs['params_values_to_vis_training_6']
+        base_value_to_vis_training = configs['base_value_to_vis_training_6']
+    else:
+        params_values_to_vis_training = configs['params_values_to_vis_training_21']
+        base_value_to_vis_training = configs['base_value_to_vis_training_21']
+
     params_values_to_vis_val1 = configs['params_values_to_vis_val1']
     base_value_to_vis_val1 = configs['base_value_to_vis_val1']
 
