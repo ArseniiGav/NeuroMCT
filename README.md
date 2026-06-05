@@ -1,14 +1,17 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.4.0-red.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Published in Communications Physics](https://img.shields.io/badge/Published_in-Communications_Physics-0067c5.svg?logo=nature)](https://www.nature.com/articles/s42005-026-02499-6)
 
 # Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning
 
-This repository contains the implementation of neural likelihood estimators for Monte Carlo parameter tuning in high-precision neutrino experiments, with a focus on the JUNO (Jiangmen Underground Neutrino Observatory) detector. The code presented here was used for our study that is available online on [arXiv](https://arxiv.org/abs/NO_ID_YET). Please refer to the paper for details. 
+This repository contains the implementation of **TEDE** and **NFDE** — neural likelihood estimators for Monte Carlo parameter tuning in high-precision neutrino experiments, with a focus on the JUNO (Jiangmen Underground Neutrino Observatory) detector. 
 
-## Overview
+📖 **Read our paper:** [*Simulation-based inference for precision neutrino physics through neural Monte Carlo tuning*](https://www.nature.com/articles/s42005-026-02499-6) (Published in **Communications Physics**, Nature Portfolio, 2026).
 
-Precise modeling of detector energy response is crucial for next-generation neutrino experiments. This work develops neural likelihood estimation methods within the simulation-based inference framework to address the computational challenges arising from the lack of analytical likelihoods.
+## Abstract
+
+> *Precise modeling of detector energy response is crucial for next-generation neutrino experiments, which present computational challenges due to the lack of analytical likelihoods. We propose a solution using neural likelihood estimation within the simulation-based inference framework. We develop two complementary neural density estimators that model likelihoods of calibration data: conditional normalizing flows and a transformer-based regressor. We adopt JUNO — a large neutrino experiment — as a case study. The energy response of JUNO depends on several parameters, all of which should be tuned, given their non-linear behavior and strong correlations in the calibration data. To this end, we integrate the modeled likelihoods with Bayesian nested sampling for parameter inference, achieving uncertainties limited only by statistics with near-zero systematic biases. The normalizing flows model enables unbinned likelihood analysis, while the transformer provides an efficient binned alternative. By providing both options, our framework offers flexibility to choose the most appropriate method for specific needs. Finally, our approach establishes a template for similar applications across experimental neutrino and broader particle physics.*
 
 ### Key features
 
@@ -124,12 +127,21 @@ neuromct/
 
 If you found this code useful for your research, please cite:
 
+> **Note**: The exact version of the code used to generate the results for the *Communications Physics* publication is preserved under the tag `v1.0.0-commphys`. You can checkout this version using `git checkout v1.0.0-commphys`.
+
 ```bibtex
-@article{neuromct2025,
-    title={Simulation-based inference for Precision Neutrino Physics through Neural Monte Carlo tuning},
-    author={Gavrikov, Arsenii and Serafini, Andrea and Dolzhikov, Dmitry and others},
-    year={2025},
-    note={In preparation}
+@article{Gavrikov:2025rps,
+    author = "Gavrikov, Arsenii and Serafini, Andrea and Dolzhikov, Dmitry and others",
+    title = "{Simulation-based inference for precision neutrino physics through neural Monte Carlo tuning}",
+    eprint = "2507.23297",
+    archivePrefix = "arXiv",
+    primaryClass = "physics.data-an",
+    doi = "10.1038/s42005-026-02499-6",
+    journal = "Commun. Phys.",
+    volume = "9",
+    number = "1",
+    pages = "63",
+    year = "2026"
 }
 ```
 ## License
