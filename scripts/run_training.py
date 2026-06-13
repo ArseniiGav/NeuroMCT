@@ -144,7 +144,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     return (optimizer, optimizer_hparams, lr_scheduler, val_metric_functions,
             checkpoint_callback, early_stopping_callback, res_visualizer_callback, logger)
 
-def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_batch_size=None, bin_size=None):
+def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_batch_size=None, bin_size=None, use_pin_memory=True):
     """Create data loaders for training and validation.
 
     Args:
@@ -200,7 +200,7 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_ba
         batch_size=batch_size,
         shuffle=True,
         num_workers=20 if approach_type == 'tede' else 0,
-        pin_memory=True,
+        pin_memory=use_pin_memory,
     )
 
     val_batch_size = val_batch_size if val_batch_size is not None else batch_size * 16
@@ -210,7 +210,7 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_ba
         batch_size=val1_data.__len__() if approach_type == 'tede' else val_batch_size,
         shuffle=False,
         num_workers=20 if approach_type == 'tede' else 0,
-        pin_memory=True,
+        pin_memory=use_pin_memory,
     )
 
     val2_loader = DataLoader(
@@ -218,7 +218,7 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_ba
         batch_size=val2_data.__len__() if approach_type == 'tede' else val_batch_size,
         shuffle=False,
         num_workers=20 if approach_type == 'tede' else 0,
-        pin_memory=True,
+        pin_memory=use_pin_memory,
     )
 
     return train_loader, val1_loader, val2_loader
@@ -305,7 +305,8 @@ def main():
         path_to_processed_data,
         args.batch_size,
         getattr(args, 'val_batch_size', None),
-        bin_size if approach_type == 'tede' else None
+        bin_size if approach_type == 'tede' else None,
+        use_pin_memory=(args.accelerator != 'cpu')
     )
 
     # Create model based on approach type
@@ -334,7 +335,7 @@ def main():
         )
 
         trainer = Trainer(
-            max_epochs=2000,
+            max_epochs=10000,
             accelerator=args.accelerator,
             strategy="ddp_spawn" if args.accelerator == "cpu" else "auto",
             devices=50 if args.accelerator == "cpu" else "auto",
@@ -381,7 +382,7 @@ def main():
         )
         
         trainer = Trainer(
-            max_epochs=2000,
+            max_epochs=10000,
             accelerator=args.accelerator,
             devices="auto",
             precision="64",
