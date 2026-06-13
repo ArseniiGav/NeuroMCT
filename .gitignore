@@ -131,3 +131,4 @@ plots/
 models/backup/
 fit_results/
 scripts/juno/
+scripts/sparsification_study/
