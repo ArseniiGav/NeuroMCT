@@ -243,12 +243,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--approach_type', type=str, choices=['nfde', 'tede'], required=True,
                       help='Choose the approach type: nfde or tede')
-    parser.add_argument("--batch_size", type=int, default=4096,
-                         help='Batch size for training (default=4096)')
-    parser.add_argument("--val_batch_size", type=int, default=65536,
-                         help='Batch size for validation (default=65536)')
-    parser.add_argument("--epochs", type=int, default=100000,
-                         help='Maximum number of training epochs (default=10000)')
     parser.add_argument('--processed_data_dir', type=str, default=None,
                       help='Override path to processed data')
     parser.add_argument('--results_dir', type=str, default=None,
