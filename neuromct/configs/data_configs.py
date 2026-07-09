@@ -33,6 +33,8 @@ data_configs = {
     "sources_colors_to_vis": sources_colors_to_vis,
 
     # params for plots configs
+    # kept for backward compatibility; plot_utils derives the count from the
+    # grid-specific params_values_to_vis_training_* tensor (3 for 3^3, else 4)
     "n_params_values_to_vis": 4,
 
     "params_values_to_vis_training_21": torch.tensor(
@@ -49,6 +51,16 @@ data_configs = {
         [0.2000, 0.4000, 0.6000, 0.8000], dtype=torch.float64),
     "base_value_to_vis_training_6": torch.tensor(
         0.4000, dtype=torch.float64),
+
+    "params_values_to_vis_training_5": torch.tensor(
+        [0.0000, 0.2500, 0.7500, 1.0000], dtype=torch.float64),
+    "base_value_to_vis_training_5": torch.tensor(
+        0.5000, dtype=torch.float64),
+
+    "params_values_to_vis_training_3": torch.tensor(
+        [0.0000, 0.5000, 1.0000], dtype=torch.float64),
+    "base_value_to_vis_training_3": torch.tensor(
+        0.5000, dtype=torch.float64),
 
     "params_values_to_vis_val1": torch.tensor(
         [0.0750, 0.3750, 0.6750, 0.9750], dtype=torch.float64),

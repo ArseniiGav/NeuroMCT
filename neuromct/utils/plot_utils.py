@@ -11,7 +11,6 @@ def res_visualizator_setup(configs, plot_every_n_train_epochs):
     kNPE_bins_edges = configs['kNPE_bins_edges']
     params_dim = configs['params_dim']
 
-    n_params_values_to_vis = configs['n_params_values_to_vis']
     
     if "11grid" in path_to_processed_data:
         params_values_to_vis_training = configs['params_values_to_vis_training_11']
@@ -19,9 +18,18 @@ def res_visualizator_setup(configs, plot_every_n_train_epochs):
     elif "6grid" in path_to_processed_data:
         params_values_to_vis_training = configs['params_values_to_vis_training_6']
         base_value_to_vis_training = configs['base_value_to_vis_training_6']
+    elif "5grid" in path_to_processed_data:
+        params_values_to_vis_training = configs['params_values_to_vis_training_5']
+        base_value_to_vis_training = configs['base_value_to_vis_training_5']
+    elif "3grid" in path_to_processed_data:
+        params_values_to_vis_training = configs['params_values_to_vis_training_3']
+        base_value_to_vis_training = configs['base_value_to_vis_training_3']
     else:
         params_values_to_vis_training = configs['params_values_to_vis_training_21']
         base_value_to_vis_training = configs['base_value_to_vis_training_21']
+
+    # number of panels follows the grid-specific values tensor (3 for 3^3, else 4)
+    n_params_values_to_vis = int(len(params_values_to_vis_training))
 
     params_values_to_vis_val1 = configs['params_values_to_vis_val1']
     base_value_to_vis_val1 = configs['base_value_to_vis_val1']

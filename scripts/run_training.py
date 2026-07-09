@@ -116,25 +116,31 @@ def setup_common_components(args, approach_type, path_to_training_results):
     monitor_metric = "val_cramer_metric"
     checkpoint_callback = ModelCheckpoint(
         save_top_k=1, monitor=monitor_metric, mode="min")
-    
+
     early_stopping_callback = EarlyStopping(
-        monitor=monitor_metric, 
-        mode="min", 
+        monitor=monitor_metric,
+        mode="min",
         patience=200 if approach_type == 'tede' else 100
     )
 
-    model_res_visualizator = res_visualizator_setup(
-        data_configs, plot_every_n_train_epochs=args.plot_every)
-    
-    res_visualizer_callback = ModelResultsVisualizerCallback(
-        res_visualizer=model_res_visualizator,
-        approach_type=approach_type,
-        base_path_to_savings=path_to_training_results,
-        plots_dir_name='plots',
-        predictions_dir_name='predictions',
-        values_to_plot_dir_name='values_to_plot',
-        val_metric_names=list(val_metric_functions.keys())
-    )
+    # --plot_every 0 (or negative) disables the visualizer entirely: no
+    # intermediate plots/predictions are produced. 
+    # Any positive value keeps the usual behaviour.
+    if args.plot_every > 0:
+        model_res_visualizator = res_visualizator_setup(
+            data_configs, plot_every_n_train_epochs=args.plot_every)
+
+        res_visualizer_callback = ModelResultsVisualizerCallback(
+            res_visualizer=model_res_visualizator,
+            approach_type=approach_type,
+            base_path_to_savings=path_to_training_results,
+            plots_dir_name='plots',
+            predictions_dir_name='predictions',
+            values_to_plot_dir_name='values_to_plot',
+            val_metric_names=list(val_metric_functions.keys())
+        )
+    else:
+        res_visualizer_callback = None
 
     logger = CSVLogger(
         save_dir=path_to_training_results,
@@ -247,6 +253,9 @@ def main():
                       help='Override path to processed data')
     parser.add_argument('--results_dir', type=str, default=None,
                       help='Override path to save training results')
+    parser.add_argument('--cpu_devices', type=int, default=50,
+                      help='Number of DDP processes for NFDE CPU training '
+                           '(must match the cores allocated to the job)')
     approach_args, _ = parser.parse_known_args()
     approach_type = approach_args.approach_type
     
@@ -312,6 +321,7 @@ def main():
             n_units=args.n_units,
             activation=args.activation_function,
             flow_type=args.flow_type,
+            #n_spline_bins=getattr(args, 'n_spline_bins', 8),
         )
         
         model_lightning_training = NFDELightningTraining(
@@ -332,14 +342,14 @@ def main():
             max_epochs=10000,
             accelerator=args.accelerator,
             strategy="ddp_spawn" if args.accelerator == "cpu" else "auto",
-            devices=50 if args.accelerator == "cpu" else "auto",
+            devices=approach_args.cpu_devices if args.accelerator == "cpu" else "auto",
             precision="64",
-            callbacks=[
+            callbacks=[cb for cb in [
                 checkpoint_callback,
                 early_stopping_callback,
                 res_visualizer_callback,
                 LearningRateMonitor(),
-            ],
+            ] if cb is not None],
             logger=logger,
             enable_checkpointing=True,
         )
@@ -380,12 +390,12 @@ def main():
             accelerator=args.accelerator,
             devices="auto",
             precision="64",
-            callbacks=[
+            callbacks=[cb for cb in [
                 checkpoint_callback,
                 early_stopping_callback,
                 res_visualizer_callback,
                 LearningRateMonitor(),
-            ],
+            ] if cb is not None],
             logger=logger,
             enable_checkpointing=True,
         )
@@ -452,16 +462,15 @@ def main():
             monitor_metric=args.monitor_metric
         )
 
-    # Save the best model
-    if "tdata_size_check" in path_to_training_results:
+    if getattr(args, "model_save_path", ""):
+        model_save_path = args.model_save_path
+        os.makedirs(os.path.dirname(model_save_path) or '.', exist_ok=True)
+    elif "tdata_size_check" in path_to_training_results:
         parts = path_to_training_results.rstrip('/').split('/')
         model_name_prefix = f"{parts[-2]}_{parts[-1]}"
         model_save_dir = f"{base_path_to_models}/models/tdata_size_check"
         os.makedirs(model_save_dir, exist_ok=True)
         model_save_path = os.path.join(model_save_dir, f"{model_name_prefix}_model.pth")
-    elif getattr(args, "model_save_path", ""):
-        model_save_path = args.model_save_path
-        os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     else:
         model_save_path = f"{base_path_to_models}/models/{approach_type}_model.pth"
 
