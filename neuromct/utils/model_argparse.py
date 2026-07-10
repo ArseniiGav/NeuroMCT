@@ -55,6 +55,12 @@ def tede_argparse():
                          help='Frequency of plotting during training (default=1)')
     parser.add_argument("--model_save_path", type=str, default="",
                          help='Custom absolute path to save the trained model')
+    parser.add_argument("--resume", action="store_true",
+                         help='Checkpoint every epoch to <results>/checkpoints and, if a '
+                              'last.ckpt already exists there, resume from it. Lets a job '
+                              'evicted by a scheduler runtime limit continue where it left '
+                              'off (for e.g. HTCondor with per-job time caps). Off by '
+                              'default -> behaviour is byte-identical to before.')
     args, _ = parser.parse_known_args()
 
     if args.config:
@@ -85,6 +91,8 @@ def nfde_argparse():
                                  Options: "kl-div", "wasserstein", or "cramer" (default="kl-div")""")
     parser.add_argument("--n_units", type=int, default=20,
                          help="The number of units in a flow's conditional network (default=20)")
+    parser.add_argument("--n_spline_bins", type=int, default=8,
+                         help='Number of bins for the rational-quadratic spline (flow_type=nsf)')
     parser.add_argument("--flow_type", type=str, default="planar",
                          help='The type of the flows (default=planar)')
     parser.add_argument("--monitor_metric", type=str, default="val_cramer_metric",
@@ -111,6 +119,12 @@ def nfde_argparse():
                          help='Frequency of plotting during training (default=1)')
     parser.add_argument("--model_save_path", type=str, default="",
                          help='Custom absolute path to save the trained model')
+    parser.add_argument("--resume", action="store_true",
+                         help='Checkpoint every epoch to <results>/checkpoints and, if a '
+                              'last.ckpt already exists there, resume from it. Lets a job '
+                              'evicted by a scheduler runtime limit continue where it left '
+                              'off (for e.g. HTCondor with per-job time caps). Off by '
+                              'default -> behaviour is byte-identical to before.')
     args, _ = parser.parse_known_args()
 
     if args.config:

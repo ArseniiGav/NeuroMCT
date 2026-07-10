@@ -114,8 +114,15 @@ def setup_common_components(args, approach_type, path_to_training_results):
 
     # Set up callbacks
     monitor_metric = "val_cramer_metric"
-    checkpoint_callback = ModelCheckpoint(
-        save_top_k=1, monitor=monitor_metric, mode="min")
+    if getattr(args, "resume", False):
+        # Fixed dirpath (not the versioned logger dir) so last.ckpt is at a
+        # stable path across restarts; save_last=True writes it every epoch.
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=os.path.join(path_to_training_results, "checkpoints"),
+            save_top_k=1, monitor=monitor_metric, mode="min", save_last=True)
+    else:
+        checkpoint_callback = ModelCheckpoint(
+            save_top_k=1, monitor=monitor_metric, mode="min")
 
     early_stopping_callback = EarlyStopping(
         monitor=monitor_metric,
@@ -400,11 +407,21 @@ def main():
             enable_checkpointing=True,
         )
 
-    # Train the model
+    # Train the model. With --resume, continue from a previous run's last.ckpt
+    # if one exists (e.g. after a scheduler eviction); Lightning restores model,
+    # optimizer, scheduler, epoch and RNG, so the trajectory matches an
+    # uninterrupted run. Fresh runs (no last.ckpt) start normally.
+    resume_ckpt = None
+    if getattr(args, "resume", False):
+        _last = os.path.join(path_to_training_results, "checkpoints", "last.ckpt")
+        if os.path.exists(_last):
+            print(f"[resume] continuing from {_last}", flush=True)
+            resume_ckpt = _last
     trainer.fit(
         model_lightning_training,
         train_dataloaders=train_loader,
-        val_dataloaders=[val1_loader, val2_loader]
+        val_dataloaders=[val1_loader, val2_loader],
+        ckpt_path=resume_ckpt
     )
 
     callbacks_dict = torch.load(
