@@ -129,6 +129,7 @@ notebooks/
 lightning_logs/
 plots/
 models/backup/
+models/**/*seed*.pth
 fit_results/
 scripts/juno/
 scripts/sparsification_study/
