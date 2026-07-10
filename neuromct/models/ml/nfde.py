@@ -11,6 +11,8 @@ import math
 import torch
 import torch.nn as nn
 
+from .rq_spline import rq_spline_transform
+
 
 class Flow(nn.Module):
     """
@@ -40,10 +42,23 @@ class Flow(nn.Module):
             n_sources: int,
             n_units: int,
             activation: str,
-            flow_type: str, 
+            flow_type: str,
+            n_spline_bins: int = 8,
+            spline_interval: tuple = (0.0, 20.0),
         ):
         super().__init__()
         self.flow_type = flow_type
+        self.n_spline_bins = n_spline_bins
+        self.spline_left, self.spline_right = spline_interval
+        if flow_type in ('planar', 'radial'):
+            n_flow_params = 3
+        elif flow_type == 'nsf':
+            # rational-quadratic spline: K widths + K heights + (K-1) interior
+            # derivatives; boundary derivatives fixed to 1 (identity tails)
+            n_flow_params = 3 * n_spline_bins - 1
+        else:
+            raise ValueError(f'''Unknown flow type: {flow_type}.
+                             Choose from ['planar', 'radial', 'nsf']''')
 
         if activation == 'relu':
             activation_func = nn.ReLU()
@@ -73,7 +88,7 @@ class Flow(nn.Module):
             activation_func,
             nn.Linear(n_units_combined, n_units_combined // 2),
             activation_func,
-            nn.Linear(n_units_combined // 2, 3),
+            nn.Linear(n_units_combined // 2, n_flow_params),
         )
 
     def _get_u_hat(self, 
@@ -181,6 +196,19 @@ class Flow(nn.Module):
 
             abs_det_jacobian = (1 + (α**2 * β) / (α + torch.abs(r))**2).abs()
             log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
+
+        elif self.flow_type == 'nsf':
+            k = self.n_spline_bins
+            fp = flow_params if flow_params.dim() == 2 else flow_params.unsqueeze(0)
+            x_b = x if x.dim() == 2 else x.unsqueeze(0)
+            if x_b.shape[0] == 1 and fp.shape[0] > 1:
+                x_b = x_b.expand(fp.shape[0], -1)
+            z, log_det_jacobian = rq_spline_transform(
+                x_b, fp[..., :k], fp[..., k:2 * k], fp[..., 2 * k:],
+                self.spline_left, self.spline_right, inverse=False)
+            if flow_params.dim() == 1 and x.dim() == 1:
+                z = z.squeeze(0)
+                log_det_jacobian = log_det_jacobian.squeeze(0)
         return z, log_det_jacobian
 
     def inverse(self, 
@@ -262,10 +290,24 @@ class Flow(nn.Module):
             for _ in range(max_iters):
                 z0, _ = self.forward(x0, params, source_types)
 
-                r = x0 - γ          
+                r = x0 - γ
                 f_prime = 1 + (α**2 * β) / (α + torch.abs(r))**2
                 f_prime_inverse = 1 / f_prime
                 x0 = x0 + (z - z0) * f_prime_inverse
+
+        elif self.flow_type == 'nsf':
+            # the rational-quadratic spline is analytically invertible:
+            # no fixed-point iterations needed
+            k = self.n_spline_bins
+            fp = flow_params if flow_params.dim() == 2 else flow_params.unsqueeze(0)
+            z_b = z if z.dim() == 2 else z.unsqueeze(0)
+            if z_b.shape[0] == 1 and fp.shape[0] > 1:
+                z_b = z_b.expand(fp.shape[0], -1)
+            x0, _ = rq_spline_transform(
+                z_b, fp[..., :k], fp[..., k:2 * k], fp[..., 2 * k:],
+                self.spline_left, self.spline_right, inverse=True)
+            if flow_params.dim() == 1 and z.dim() == 1:
+                x0 = x0.squeeze(0)
         return x0
 
 
@@ -306,11 +348,13 @@ class NFDE(nn.Module):
             n_units: int,
             activation: str,
             flow_type: str,
+            n_spline_bins: int = 8,
+            spline_interval: tuple = (0.0, 20.0),
         ):
         super().__init__()
         self.flows = self._flows_block(
             n_flows, n_conditions, n_sources, n_units, 
-            activation, flow_type)
+            activation, flow_type, n_spline_bins, spline_interval)
         self.pi = torch.tensor(math.pi, dtype=torch.float64)
 
     def _flows_block(self, 
@@ -320,6 +364,8 @@ class NFDE(nn.Module):
             n_units: int, 
             activation: str, 
             flow_type: str,
+            n_spline_bins: int = 8,
+            spline_interval: tuple = (0.0, 20.0),
         ) -> nn.ModuleList:
         """
         Create a sequence of normalizing flow layers.
@@ -345,7 +391,8 @@ class NFDE(nn.Module):
             List of the normalizing flows.
         """
         return nn.ModuleList([
-            Flow(n_conditions, n_sources, n_units, activation, flow_type)
+            Flow(n_conditions, n_sources, n_units, activation, flow_type,
+                 n_spline_bins=n_spline_bins, spline_interval=spline_interval)
             for _ in range(n_flows)
         ])
 

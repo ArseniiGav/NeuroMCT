@@ -48,6 +48,7 @@ def setup(model_type, device, base_path_to_models=None, model_path=None):
             n_units=args.n_units,
             activation=args.activation_function,
             flow_type=args.flow_type,
+            n_spline_bins=getattr(args, 'n_spline_bins', 8),
         ).double().to(device)
 
         load_path = model_path if model_path else f"{base_path_to_models}/models/nfde_model.pth"
