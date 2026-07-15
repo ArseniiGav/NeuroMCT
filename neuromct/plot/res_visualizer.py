@@ -469,7 +469,10 @@ class ModelResultsVisualizer:
             title = ("The loss averaged over the last batch: " + 
                      r'$L^{B}_{\rm NLL} = $' + f"{train_loss_value:.4f}")
 
-        x_to_plot = np.arange(1, global_step+1)
+        # On resumed runs the in-memory loss history only covers the steps
+        # since the resume, while global_step counts from the very first run:
+        # anchor the x-axis so the last point lands on the current step.
+        x_to_plot = np.arange(global_step - len(train_loss_to_plot) + 1, global_step + 1)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
             x_to_plot,
@@ -527,7 +530,9 @@ class ModelResultsVisualizer:
 
             ylabel = "Kolmogorov-Smirnov distance: " + r"$d^{V}_{\infty}$"
 
-        x_to_plot = np.arange(1, current_epoch+2)
+        # On resumed runs the metric histories only cover the epochs since
+        # the resume (see plot_training_process).
+        x_to_plot = np.arange(current_epoch + 2 - len(val_metrics_to_plot), current_epoch + 2)
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
         ax.plot(
             x_to_plot,
@@ -576,7 +581,10 @@ class ModelResultsVisualizer:
             path_to_save: str
         ) -> None:
         ylabel = "Validation metrics: " + r"$d^{V}_{p}$"
-        x_to_plot = np.arange(1, current_epoch+2)
+        # On resumed runs the metric histories only cover the epochs since
+        # the resume (see plot_training_process).
+        n_epochs_collected = len(val_metrics_to_plot[val_metric_names[0]])
+        x_to_plot = np.arange(current_epoch + 2 - n_epochs_collected, current_epoch + 2)
         title = ""
 
         fig, ax = plt.subplots(1, 1, figsize=(12, 5))
