@@ -49,6 +49,25 @@ from neuromct.utils import (
     res_visualizator_setup
 )
 
+def _check_not_already_stopped(ckpt_path):
+    """Abort if the checkpoint belongs to a run that already early-stopped:
+    re-resuming it would grant patience beyond the study protocol (each model
+    gets exactly one patience window after its last improvement). If extending
+    is a deliberate decision (sanctioned recovery of an undertrained run, or
+    finalizing after a post-stop crash), zero wait_count in the checkpoint
+    first."""
+    callbacks = torch.load(ckpt_path, map_location="cpu").get("callbacks", {})
+    for name, state in callbacks.items():
+        if "EarlyStopping" in name and isinstance(state, dict):
+            if state.get("wait_count", 0) >= state.get("patience", float("inf")):
+                raise SystemExit(
+                    f"[resume] refusing: {ckpt_path} is from a run that already "
+                    f"early-stopped (wait_count={state['wait_count']} >= "
+                    f"patience={state['patience']}). Re-resuming would extend "
+                    "the search beyond the protocol stopping rule. If this is "
+                    "intentional, zero wait_count in the checkpoint first.")
+
+
 class ResumeFreshEarlyStopping(EarlyStopping):
     """EarlyStopping whose patience window restarts on every resume.
 
@@ -445,6 +464,7 @@ def main():
             os.path.join(path_to_training_results, "checkpoints", "last*.ckpt"))
         if _lasts:
             resume_ckpt = max(_lasts, key=os.path.getmtime)
+            _check_not_already_stopped(resume_ckpt)
             print(f"[resume] continuing from {resume_ckpt}", flush=True)
     trainer.fit(
         model_lightning_training,
