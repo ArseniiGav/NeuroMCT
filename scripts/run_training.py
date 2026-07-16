@@ -20,6 +20,7 @@ The script saves trained models, logs, and visualizations in the specified outpu
 """
 
 import os
+import glob
 import argparse
 import json
 
@@ -47,6 +48,23 @@ from neuromct.utils import (
     define_transformations,
     res_visualizator_setup
 )
+
+class ResumeFreshEarlyStopping(EarlyStopping):
+    """EarlyStopping whose patience window restarts on every resume.
+
+    Plain Lightning restore brings back wait_count (and patience) from the
+    checkpoint, so a run interrupted mid-plateau resumes with most of its
+    window already consumed and dies ~patience epochs later at a premature
+    best. Here only best_score is kept from the checkpoint -- stopping still
+    requires beating the all-time best -- while the window restarts and
+    patience always stays at the configured study value (never the
+    checkpoint's).
+    """
+    def load_state_dict(self, state_dict):
+        self.best_score = state_dict.get("best_score", self.best_score)
+        self.wait_count = 0
+        self.stopped_epoch = 0
+
 
 def setup_common_components(args, approach_type, path_to_training_results):
     """Set up components common to both NFDE and TEDE training.
@@ -117,14 +135,21 @@ def setup_common_components(args, approach_type, path_to_training_results):
     if getattr(args, "resume", False):
         # Fixed dirpath (not the versioned logger dir) so last.ckpt is at a
         # stable path across restarts; save_last=True writes it every epoch.
-        checkpoint_callback = ModelCheckpoint(
+        # enable_version_counter=False keeps overwriting last.ckpt in place
+        # instead of switching to last-v1.ckpt when a resume finds one there.
+        mc_kwargs = dict(
             dirpath=os.path.join(path_to_training_results, "checkpoints"),
             save_top_k=1, monitor=monitor_metric, mode="min", save_last=True)
+        try:
+            checkpoint_callback = ModelCheckpoint(
+                enable_version_counter=False, **mc_kwargs)
+        except TypeError:  # lightning too old for enable_version_counter
+            checkpoint_callback = ModelCheckpoint(**mc_kwargs)
     else:
         checkpoint_callback = ModelCheckpoint(
             save_top_k=1, monitor=monitor_metric, mode="min")
 
-    early_stopping_callback = EarlyStopping(
+    early_stopping_callback = ResumeFreshEarlyStopping(
         monitor=monitor_metric,
         mode="min",
         patience=200 if approach_type == 'tede' else 100
@@ -413,10 +438,14 @@ def main():
     # uninterrupted run. Fresh runs (no last.ckpt) start normally.
     resume_ckpt = None
     if getattr(args, "resume", False):
-        _last = os.path.join(path_to_training_results, "checkpoints", "last.ckpt")
-        if os.path.exists(_last):
-            print(f"[resume] continuing from {_last}", flush=True)
-            resume_ckpt = _last
+        # Newest of last*.ckpt: interrupted runs from before
+        # enable_version_counter=False may have left the freshest state in
+        # last-v1.ckpt rather than last.ckpt.
+        _lasts = glob.glob(
+            os.path.join(path_to_training_results, "checkpoints", "last*.ckpt"))
+        if _lasts:
+            resume_ckpt = max(_lasts, key=os.path.getmtime)
+            print(f"[resume] continuing from {resume_ckpt}", flush=True)
     trainer.fit(
         model_lightning_training,
         train_dataloaders=train_loader,
