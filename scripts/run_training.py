@@ -85,7 +85,7 @@ class ResumeFreshEarlyStopping(EarlyStopping):
         self.stopped_epoch = 0
 
 
-def setup_common_components(args, approach_type, path_to_training_results):
+def setup_common_components(args, approach_type, path_to_training_results, patience=None):
     """Set up components common to both NFDE and TEDE training.
 
     This function initializes components used by both approaches, including:
@@ -168,10 +168,12 @@ def setup_common_components(args, approach_type, path_to_training_results):
         checkpoint_callback = ModelCheckpoint(
             save_top_k=1, monitor=monitor_metric, mode="min")
 
+    if patience is None:
+        patience = 200 if approach_type == 'tede' else 100
     early_stopping_callback = ResumeFreshEarlyStopping(
         monitor=monitor_metric,
         mode="min",
-        patience=200 if approach_type == 'tede' else 100
+        patience=patience
     )
 
     # --plot_every 0 (or negative) disables the visualizer entirely: no
@@ -201,7 +203,7 @@ def setup_common_components(args, approach_type, path_to_training_results):
     return (optimizer, optimizer_hparams, lr_scheduler, val_metric_functions,
             checkpoint_callback, early_stopping_callback, res_visualizer_callback, logger)
 
-def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_batch_size=None, bin_size=None, use_pin_memory=True):
+def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_batch_size=None, bin_size=None, use_pin_memory=True, num_workers=20):
     """Create data loaders for training and validation.
 
     Args:
@@ -256,7 +258,7 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_ba
         train_data,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=20 if approach_type == 'tede' else 0,
+        num_workers=num_workers if approach_type == 'tede' else 0,
         pin_memory=use_pin_memory,
     )
 
@@ -266,7 +268,7 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_ba
         val1_data,
         batch_size=val1_data.__len__() if approach_type == 'tede' else val_batch_size,
         shuffle=False,
-        num_workers=20 if approach_type == 'tede' else 0,
+        num_workers=num_workers if approach_type == 'tede' else 0,
         pin_memory=use_pin_memory,
     )
 
@@ -274,7 +276,7 @@ def create_dataloaders(approach_type, path_to_processed_data, batch_size, val_ba
         val2_data,
         batch_size=val2_data.__len__() if approach_type == 'tede' else val_batch_size,
         shuffle=False,
-        num_workers=20 if approach_type == 'tede' else 0,
+        num_workers=num_workers if approach_type == 'tede' else 0,
         pin_memory=use_pin_memory,
     )
 
@@ -307,6 +309,14 @@ def main():
     parser.add_argument('--cpu_devices', type=int, default=50,
                       help='Number of DDP processes for NFDE CPU training '
                            '(must match the cores allocated to the job)')
+    parser.add_argument('--num_workers', type=int, default=20,
+                      help='DataLoader workers for TEDE loaders (operational '
+                           'knob only; default 20 = historical behaviour). '
+                           'Use small values when many trainings share a node.')
+    parser.add_argument('--patience', type=int, default=None,
+                      help='Early-stopping patience override. Default (unset): '
+                           '100 for NFDE, 200 for TEDE. Value is echoed per run '
+                           'so every result records the stopping tolerance used.')
     approach_args, _ = parser.parse_known_args()
     approach_type = approach_args.approach_type
     
@@ -351,7 +361,8 @@ def main():
     # Set up common components
     (optimizer, optimizer_hparams, lr_scheduler, val_metric_functions,
      checkpoint_callback, early_stopping_callback, res_visualizer_callback,
-     logger) = setup_common_components(args, approach_type, path_to_training_results)
+     logger) = setup_common_components(args, approach_type, path_to_training_results,
+                                       patience=approach_args.patience)
 
     # Create dataloaders
     train_loader, val1_loader, val2_loader = create_dataloaders(
@@ -360,7 +371,8 @@ def main():
         args.batch_size,
         getattr(args, 'val_batch_size', None),
         bin_size if approach_type == 'tede' else None,
-        use_pin_memory=(args.accelerator != 'cpu')
+        use_pin_memory=(args.accelerator != 'cpu'),
+        num_workers=approach_args.num_workers
     )
 
     # Create model based on approach type
