@@ -51,6 +51,10 @@ from neuromct.utils import (
     res_visualizator_setup
 )
 
+
+MAX_EPOCHS = 20_000
+
+
 def _check_not_already_stopped(ckpt_path):
     """Abort if the checkpoint belongs to a run that already early-stopped:
     re-resuming it would grant patience beyond the study protocol (each model
@@ -164,6 +168,7 @@ def _write_or_check_run_provenance(
         "beta2": getattr(args, "beta2", None),
         "monitor_metric": args.monitor_metric,
         "precision": "64",
+        "max_epochs": MAX_EPOCHS,
     }
     provenance_path = Path(path_to_training_results) / "run_provenance.json"
     if provenance_path.exists():
@@ -515,7 +520,7 @@ def main():
         )
 
         trainer = Trainer(
-            max_epochs=10000,
+            max_epochs=MAX_EPOCHS,
             accelerator=args.accelerator,
             strategy="ddp_spawn" if args.accelerator == "cpu" else "auto",
             devices=approach_args.cpu_devices if args.accelerator == "cpu" else "auto",
@@ -562,7 +567,7 @@ def main():
         )
         
         trainer = Trainer(
-            max_epochs=10000,
+            max_epochs=MAX_EPOCHS,
             accelerator=args.accelerator,
             devices="auto",
             precision="64",
