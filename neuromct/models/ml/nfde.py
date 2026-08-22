@@ -120,7 +120,8 @@ class Flow(nn.Module):
     def forward(self, 
                 x: torch.Tensor, 
                 params: torch.Tensor, 
-                source_types: torch.Tensor
+                source_types: torch.Tensor,
+                compute_log_det: bool = True
         ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass of the normalizing flow. Normalizing direction.
@@ -178,8 +179,11 @@ class Flow(nn.Module):
             h = torch.tanh(m)
             z = x + u * h
             
-            abs_det_jacobian = (1 + u * (1 - h**2) * w).abs()
-            log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
+            if compute_log_det:
+                abs_det_jacobian = (1 + u * (1 - h**2) * w).abs()
+                log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
+            else:
+                log_det_jacobian = None
 
         elif self.flow_type == 'radial':
             α = torch.log(torch.exp(flow_params[..., 0]) + 1)
@@ -194,8 +198,13 @@ class Flow(nn.Module):
             r = x - γ
             z = x + α * β * r / (α + torch.abs(r))
 
-            abs_det_jacobian = (1 + (α**2 * β) / (α + torch.abs(r))**2).abs()
-            log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
+            if compute_log_det:
+                abs_det_jacobian = (
+                    1 + (α**2 * β) / (α + torch.abs(r))**2
+                ).abs()
+                log_det_jacobian = torch.log(1e-10 + abs_det_jacobian)
+            else:
+                log_det_jacobian = None
 
         elif self.flow_type == 'nsf':
             k = self.n_spline_bins
@@ -428,7 +437,8 @@ class NFDE(nn.Module):
             self, 
             x: torch.Tensor, 
             params: torch.Tensor, 
-            source_types: torch.Tensor
+            source_types: torch.Tensor,
+            compute_log_det: bool = True
         ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass through the NFDE model (normalizing direction).
@@ -448,10 +458,12 @@ class NFDE(nn.Module):
             - Transformed values z
             - Sum of log-dets of Jacobians of the transformations
         """
-        log_det_sum = 0.0
+        log_det_sum = 0.0 if compute_log_det else None
         for flow in self.flows:
-            x, log_det = flow(x, params, source_types)
-            log_det_sum = log_det_sum + log_det
+            x, log_det = flow(
+                x, params, source_types, compute_log_det=compute_log_det)
+            if compute_log_det:
+                log_det_sum = log_det_sum + log_det
         z = x
         return z, log_det_sum
 
@@ -504,6 +516,27 @@ class NFDE(nn.Module):
         """
         base_log_prob, log_det_jacobian = self._log_prob_comp(x, params, source_types)
         return base_log_prob + log_det_jacobian
+
+    def cdf(
+            self,
+            x: torch.Tensor,
+            params: torch.Tensor,
+            source_types: torch.Tensor
+        ) -> torch.Tensor:
+        """Evaluate the exact conditional CDF of the one-dimensional flow.
+
+        Every supported flow is constrained to be monotonically increasing.
+        If ``z = f(x; conditions)`` is the complete normalizing transform and
+        the base density is standard normal, then
+
+        ``P(X <= x | conditions) = Phi(f(x; conditions))``.
+
+        This avoids reconstructing the CDF by numerically integrating a
+        density on a large fixed grid.
+        """
+        z, _ = self.forward(
+            x, params, source_types, compute_log_det=False)
+        return torch.special.ndtr(z)
 
     def generate_energies(
             self, 

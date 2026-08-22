@@ -16,5 +16,5 @@
     "accelerator": "cpu",
     "monitor_metric": "val_cramer_metric",
     "seed": 22,
-    "n_en_values": 100000
+    "n_en_values": 40000
 }

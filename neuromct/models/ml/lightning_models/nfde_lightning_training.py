@@ -18,7 +18,8 @@ class NFDELightningTraining(LightningModule):
             weight_decay: float,
             monitor_metric: str,
             n_en_values: int,
-            en_limits: tuple[float, float]
+            en_limits: tuple[float, float],
+            record_train_loss: bool = True
         ):
         super(NFDELightningTraining, self).__init__()
 
@@ -32,10 +33,14 @@ class NFDELightningTraining(LightningModule):
         self.weight_decay = weight_decay
         self.monitor_metric = monitor_metric
         self.val_metric_names = list(val_metric_functions.keys())
+        self.record_train_loss = record_train_loss
         
         lb, rb = en_limits
-        self.x_values = torch.linspace(
-            lb, rb, n_en_values, dtype=torch.float64)
+        self.register_buffer(
+            'x_values',
+            torch.linspace(lb, rb, n_en_values, dtype=torch.float64),
+            persistent=False,
+        )
 
         self.train_loss_to_plot = []
 
@@ -44,23 +49,84 @@ class NFDELightningTraining(LightningModule):
         elif self.loss_function == "cramer":
             self.cramer_loss = LpNormDistance(p=2)
     
-    def _compute_and_log_val_metrics(self, x, prob_x_batch, real_energies_batch):
-        metrics = dict()
-        for name, function in self.val_metric_functions.items():
-            metric_list = []
-            for i in range(real_energies_batch.shape[0]):
-                no_nan_inds = ~torch.isnan(real_energies_batch[i])
-                real_energies_no_nan = real_energies_batch[i][no_nan_inds]
-                metric = function(
-                    x.unsqueeze(0), 
-                    real_energies_no_nan.unsqueeze(0), 
-                    prob_x_batch[i].unsqueeze(0), 
-                    None
-                )
-                metric_list.append(metric)
-            metric_mean = torch.mean(torch.stack(metric_list))
-            metrics[name] = metric_mean.item()
-        return metrics
+    def _compute_and_log_val_metrics(
+            self, x, model_cdf_batch, real_energies_batch):
+        """Compute validation distances from the flow's direct CDF.
+
+        The model CDF is normalized to the configured finite energy interval,
+        matching the truncation convention of the historical density-grid
+        implementation. Integrated distances use one shared grid plus exact
+        empirical tail contributions. KS evaluates every empirical jump using
+        linear interpolation of the smooth model CDF.
+        """
+        x_deltas = torch.diff(x)
+        cdf_min = model_cdf_batch[:, :1]
+        cdf_range = model_cdf_batch[:, -1:] - cdf_min
+        cdf_range = cdf_range.clamp_min(
+            torch.finfo(model_cdf_batch.dtype).eps)
+        model_cdf_batch = (
+            (model_cdf_batch - cdf_min) / cdf_range
+        ).clamp(0.0, 1.0)
+
+        metric_lists = {name: [] for name in self.val_metric_names}
+        for i in range(real_energies_batch.shape[0]):
+            real = real_energies_batch[i]
+            real_sorted = torch.sort(real[~torch.isnan(real)]).values
+            n_real = real_sorted.numel()
+            empirical_cdf = torch.searchsorted(
+                real_sorted, x, right=True).to(x.dtype) / n_real
+            model_cdf = model_cdf_batch[i]
+            cdf_delta = torch.abs(model_cdf - empirical_cdf)
+
+            lower_nodes = torch.cat((real_sorted[real_sorted < x[0]], x[:1]))
+            upper_nodes = torch.cat((x[-1:], real_sorted[real_sorted > x[-1]]))
+            lower_delta = (
+                torch.searchsorted(
+                    real_sorted, lower_nodes[:-1], right=True
+                ).to(x.dtype) / n_real
+            )
+            upper_delta = (
+                1.0 - torch.searchsorted(
+                    real_sorted, upper_nodes[:-1], right=True
+                ).to(x.dtype) / n_real
+            )
+
+            right = torch.searchsorted(x, real_sorted).clamp(1, x.numel() - 1)
+            left = right - 1
+            fraction = (
+                (real_sorted - x[left]) / (x[right] - x[left])
+            )
+            cdf_at_real = model_cdf[left] + fraction * (
+                model_cdf[right] - model_cdf[left])
+            cdf_at_real = torch.where(
+                real_sorted <= x[0], torch.zeros_like(cdf_at_real), cdf_at_real)
+            cdf_at_real = torch.where(
+                real_sorted >= x[-1], torch.ones_like(cdf_at_real), cdf_at_real)
+            ranks_upper = torch.arange(
+                1, n_real + 1, device=x.device, dtype=x.dtype) / n_real
+            ranks_lower = ranks_upper - 1.0 / n_real
+            ks_value = torch.maximum(
+                torch.max(ranks_upper - cdf_at_real),
+                torch.max(cdf_at_real - ranks_lower),
+            )
+
+            for name, function in self.val_metric_functions.items():
+                p = float(function.p)
+                if p != float('inf'):
+                    integral = torch.sum((cdf_delta[:-1] ** p) * x_deltas)
+                    integral = integral + torch.sum(
+                        (lower_delta ** p) * torch.diff(lower_nodes))
+                    integral = integral + torch.sum(
+                        (upper_delta ** p) * torch.diff(upper_nodes))
+                    value = integral ** (1.0 / p)
+                else:
+                    value = ks_value
+                metric_lists[name].append(value)
+
+        return {
+            name: torch.stack(values).mean().detach()
+            for name, values in metric_lists.items()
+        }
 
     def configure_optimizers(self):
         if self.optimizer == optim.AdamW:
@@ -103,7 +169,7 @@ class NFDELightningTraining(LightningModule):
     def training_step(self, batch):
         real_energies, params, source_types = batch
         batch_size = real_energies.shape[0]
-        x = self.x_values.to(device=real_energies.device)
+        x = self.x_values
 
         if batch_size > 1 and self.loss_function == 'kl-div':
             # Replace NaNs with 0.0 to prevent NaN gradients in backward pass
@@ -118,7 +184,8 @@ class NFDELightningTraining(LightningModule):
             mean_loss = item_losses.mean()
             self.log(f"training_loss", mean_loss, prog_bar=True, 
                      on_step=True, on_epoch=True, sync_dist=True)
-            self.train_loss_to_plot.append(mean_loss.item())
+            if self.record_train_loss:
+                self.train_loss_to_plot.append(mean_loss.item())
             return mean_loss
 
         losses = []
@@ -154,7 +221,8 @@ class NFDELightningTraining(LightningModule):
         mean_loss = torch.mean(torch.stack(losses))
         self.log(f"training_loss", mean_loss, prog_bar=True, 
                  on_step=True, on_epoch=True, sync_dist=True)
-        self.train_loss_to_plot.append(mean_loss.item())
+        if self.record_train_loss:
+            self.train_loss_to_plot.append(mean_loss.item())
         return mean_loss
 
     def on_validation_epoch_start(self):
@@ -167,36 +235,34 @@ class NFDELightningTraining(LightningModule):
         dataset_type = "val1" if dataloader_idx == 0 else "val2"
         real_energies, params, source_types = batch
         batch_size = real_energies.shape[0]
-        x = self.x_values.to(device=real_energies.device)
-
-        if batch_size > 1:
-            prob_x_batch = torch.exp(self.model.log_prob(x, params, source_types))
-        else:
-            prob_x_batch = []
-            for i in range(batch_size):
-                prob_x = torch.exp(
-                    self.model.log_prob(x, params[i], source_types[i])
-                )
-                prob_x_batch.append(prob_x)
-            prob_x_batch = torch.vstack(prob_x_batch)
+        x = self.x_values
+        model_cdf_batch = self.model.cdf(x, params, source_types)
+        if model_cdf_batch.dim() == 1:
+            model_cdf_batch = model_cdf_batch.unsqueeze(0)
 
         metrics_values = self._compute_and_log_val_metrics(
-            x, prob_x_batch, real_energies)
+            x, model_cdf_batch, real_energies)
         if dataset_type == 'val1':
             for name, value in metrics_values.items():
-                self.val1_metrics_within_val_epoch[name].append(value)
+                self.val1_metrics_within_val_epoch[name].append(
+                    (value, batch_size))
         elif dataset_type == 'val2':
             for name, value in metrics_values.items():
-                self.val2_metrics_within_val_epoch[name].append(value)
+                self.val2_metrics_within_val_epoch[name].append(
+                    (value, batch_size))
 
     def on_validation_epoch_end(self):
         for name in self.val_metric_names:
-            val1_metrics_value = torch.mean(
-                torch.tensor(self.val1_metrics_within_val_epoch[name])
-            ).item()
-            val2_metrics_value = torch.mean(
-                torch.tensor(self.val2_metrics_within_val_epoch[name])
-            ).item()
+            val1_values = self.val1_metrics_within_val_epoch[name]
+            val2_values = self.val2_metrics_within_val_epoch[name]
+            val1_metrics_value = (
+                sum(value * count for value, count in val1_values)
+                / sum(count for _, count in val1_values)
+            )
+            val2_metrics_value = (
+                sum(value * count for value, count in val2_values)
+                / sum(count for _, count in val2_values)
+            )
             val_metrics_value = (val1_metrics_value + val2_metrics_value) / 2
 
             self.log(f"val1_{name}_metric", val1_metrics_value, 

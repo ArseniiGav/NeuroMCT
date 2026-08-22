@@ -22,7 +22,9 @@ The script saves trained models, logs, and visualizations in the specified outpu
 import os
 import glob
 import argparse
+import hashlib
 import json
+from pathlib import Path
 
 import torch
 import torch.optim as optim
@@ -69,20 +71,116 @@ def _check_not_already_stopped(ckpt_path):
 
 
 class ResumeFreshEarlyStopping(EarlyStopping):
-    """EarlyStopping whose patience window restarts on every resume.
+    """Restore stopping progress while keeping the configured patience.
 
-    Plain Lightning restore brings back wait_count (and patience) from the
-    checkpoint, so a run interrupted mid-plateau resumes with most of its
-    window already consumed and dies ~patience epochs later at a premature
-    best. Here only best_score is kept from the checkpoint -- stopping still
-    requires beating the all-time best -- while the window restarts and
-    patience always stays at the configured study value (never the
-    checkpoint's).
+    The class name is retained for checkpoint compatibility with runs started
+    by earlier versions. An interrupted job must preserve ``wait_count`` so
+    scheduler retries do not grant additional, configuration-dependent
+    patience. ``patience`` itself is deliberately not restored: it remains the
+    value supplied for the current campaign.
     """
     def load_state_dict(self, state_dict):
         self.best_score = state_dict.get("best_score", self.best_score)
-        self.wait_count = 0
-        self.stopped_epoch = 0
+        self.wait_count = state_dict.get("wait_count", 0)
+        self.stopped_epoch = state_dict.get("stopped_epoch", 0)
+
+
+def _load_sparsification_manifest(path_to_processed_data):
+    """Validate and return provenance for a sparsified training dataset."""
+    data_path = Path(path_to_processed_data)
+    if "sparsified" not in data_path.parts:
+        return None
+
+    manifest_path = data_path / "training" / "sparsification_manifest.json"
+    if not manifest_path.is_file():
+        raise SystemExit(
+            f"Sparsified dataset is missing its manifest: {manifest_path}")
+
+    with manifest_path.open() as stream:
+        manifest = json.load(stream)
+
+    required = {
+        "schema_version", "grid_size", "nominal_events",
+        "nominal_full_events", "retained_fraction", "subsampling_seed",
+        "counts_by_source",
+    }
+    missing = required - manifest.keys()
+    if missing:
+        raise SystemExit(
+            f"Incomplete sparsification manifest {manifest_path}: "
+            f"missing {sorted(missing)}")
+
+    expected_name = (
+        f"{manifest['grid_size']}grid_{manifest['nominal_events']}events")
+    if data_path.name != expected_name:
+        raise SystemExit(
+            f"Dataset path/manifest mismatch: directory is {data_path.name!r}, "
+            f"manifest describes {expected_name!r}")
+
+    source_keys = set(manifest["counts_by_source"])
+    if source_keys != {str(i) for i in range(5)}:
+        raise SystemExit(
+            f"Manifest must contain source blocks 0--4, found "
+            f"{sorted(source_keys)}")
+
+    total_entries = sum(
+        int(values["total"])
+        for values in manifest["counts_by_source"].values())
+    print(
+        f"[dataset] corrected sparsification manifest: "
+        f"G={manifest['grid_size']}^3, nominal N={manifest['nominal_events']}, "
+        f"actual entries={total_entries}, seed={manifest['subsampling_seed']}",
+        flush=True,
+    )
+    return manifest
+
+
+def _write_or_check_run_provenance(
+        path_to_training_results, args, patience, dataset_manifest):
+    """Prevent a resume from silently changing data or training settings."""
+    config_path = Path(args.config).resolve()
+    provenance = {
+        "schema_version": 1,
+        "approach_type": "nfde",
+        "processed_data_dir": str(Path(args.processed_data_dir).resolve()),
+        "dataset_manifest": dataset_manifest,
+        "config_path": str(config_path),
+        "config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
+        "seed": args.seed,
+        "batch_size": args.batch_size,
+        "patience": patience,
+        "n_en_values": args.n_en_values,
+        "n_flows": args.n_flows,
+        "n_units": args.n_units,
+        "flow_type": args.flow_type,
+        "loss_function": args.loss_function,
+        "activation_function": args.activation_function,
+        "learning_rate": args.learning_rate,
+        "optimizer": args.optimizer,
+        "lr_scheduler": args.lr_scheduler,
+        "T_max": getattr(args, "T_max", None),
+        "weight_decay": args.weight_decay,
+        "beta1": getattr(args, "beta1", None),
+        "beta2": getattr(args, "beta2", None),
+        "monitor_metric": args.monitor_metric,
+        "precision": "64",
+    }
+    provenance_path = Path(path_to_training_results) / "run_provenance.json"
+    if provenance_path.exists():
+        with provenance_path.open() as stream:
+            previous = json.load(stream)
+        if previous != provenance:
+            differing = sorted(
+                key for key in set(previous) | set(provenance)
+                if previous.get(key) != provenance.get(key))
+            raise SystemExit(
+                f"Refusing incompatible resume in {path_to_training_results}; "
+                f"provenance differs in: {', '.join(differing)}")
+    else:
+        with provenance_path.open("x") as stream:
+            json.dump(provenance, stream, indent=2)
+            stream.write("\n")
+    return provenance
 
 
 def setup_common_components(args, approach_type, path_to_training_results, patience=None):
@@ -150,7 +248,7 @@ def setup_common_components(args, approach_type, path_to_training_results, patie
         lr_scheduler = None
 
     # Set up callbacks
-    monitor_metric = "val_cramer_metric"
+    monitor_metric = args.monitor_metric
     if getattr(args, "resume", False):
         # Fixed dirpath (not the versioned logger dir) so last.ckpt is at a
         # stable path across restarts; save_last=True writes it every epoch.
@@ -170,6 +268,8 @@ def setup_common_components(args, approach_type, path_to_training_results, patie
 
     if patience is None:
         patience = 200 if approach_type == 'tede' else 100
+    if patience <= 0:
+        raise ValueError(f"patience must be positive, got {patience}")
     early_stopping_callback = ResumeFreshEarlyStopping(
         monitor=monitor_metric,
         mode="min",
@@ -358,11 +458,23 @@ def main():
 
     seed_everything(args.seed, workers=True)
 
+    dataset_manifest = _load_sparsification_manifest(path_to_processed_data)
+
     # Set up common components
     (optimizer, optimizer_hparams, lr_scheduler, val_metric_functions,
      checkpoint_callback, early_stopping_callback, res_visualizer_callback,
      logger) = setup_common_components(args, approach_type, path_to_training_results,
                                        patience=approach_args.patience)
+
+    run_provenance = None
+    if approach_type == "nfde" and dataset_manifest is not None:
+        args.processed_data_dir = path_to_processed_data
+        run_provenance = _write_or_check_run_provenance(
+            path_to_training_results,
+            args,
+            early_stopping_callback.patience,
+            dataset_manifest,
+        )
 
     # Create dataloaders
     train_loader, val1_loader, val2_loader = create_dataloaders(
@@ -398,7 +510,8 @@ def main():
             weight_decay=args.weight_decay,
             monitor_metric=args.monitor_metric,
             n_en_values=args.n_en_values,
-            en_limits=en_limits
+            en_limits=en_limits,
+            record_train_loss=(res_visualizer_callback is not None)
         )
 
         trainer = Trainer(
@@ -485,23 +598,22 @@ def main():
         ckpt_path=resume_ckpt
     )
 
-    callbacks_dict = torch.load(
+    best_checkpoint = torch.load(
         checkpoint_callback.best_model_path,
         map_location="cpu"
-    )['callbacks']
-
-    for key in callbacks_dict.keys():
-        if "ModelCheckpoint" in key:
-            model_checkpoint_key = key
-        elif "EarlyStopping" in key:
-            early_stopping_key = key
-    best_model_score = callbacks_dict[model_checkpoint_key]["best_model_score"].item()
-    stopped_epoch = callbacks_dict[early_stopping_key]["stopped_epoch"]
+    )
+    best_model_score = checkpoint_callback.best_model_score.item()
+    stopped_epoch = early_stopping_callback.stopped_epoch
 
     # Save some results info
     results_info = {
         'best_model_score': best_model_score,
-        'stopped_epoch': stopped_epoch
+        'best_epoch': best_checkpoint['epoch'],
+        'stopped_epoch': stopped_epoch,
+        'patience': early_stopping_callback.patience,
+        'best_model_path': checkpoint_callback.best_model_path,
+        'dataset_manifest': dataset_manifest,
+        'run_provenance': run_provenance,
     }
 
     results_info_filepath = os.path.join(
@@ -523,7 +635,8 @@ def main():
             weight_decay=args.weight_decay,
             monitor_metric=args.monitor_metric,
             n_en_values=args.n_en_values,
-            en_limits=en_limits
+            en_limits=en_limits,
+            record_train_loss=(res_visualizer_callback is not None)
         )
     else:  # tede
         best_model = TEDELightningTraining.load_from_checkpoint(
